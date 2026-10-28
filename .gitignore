@@ -1,0 +1,8 @@
+.DS_Store
+.vercel/
+.playwright-mcp/
+__pycache__/
+*.pyc
+*.log
+node_modules/
+/*.png

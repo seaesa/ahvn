@@ -1,0 +1,160 @@
+/* Cavani clone – custom additions (cart, search, content pages) */
+
+/* ---------- search live results ---------- */
+#search-lightbox .live-search-results,
+.live-search-results {
+  display: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  z-index: 999;
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .12);
+  max-height: 420px;
+  overflow-y: auto;
+  text-align: left;
+}
+#search-lightbox form { position: relative; }
+.autocomplete-suggestions { padding: 6px 0; }
+.autocomplete-suggestion {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  color: #0a0a0a !important;
+  border-bottom: 1px solid #f1efed;
+}
+.autocomplete-suggestion:last-child { border-bottom: 0; }
+.autocomplete-suggestion:hover { background: #f7f5f2; }
+.autocomplete-suggestion img { width: 48px; height: 48px; object-fit: cover; flex: 0 0 48px; }
+.autocomplete-suggestion .title { flex: 1 1 auto; font-size: 13px; line-height: 1.35; }
+.autocomplete-suggestion .price { flex: 0 0 auto; font-size: 13px; color: #926c51; white-space: nowrap; }
+.autocomplete-no-results { padding: 16px; font-size: 14px; color: #777; }
+
+/* ---------- cart page ---------- */
+.woocommerce-cart .cart-container { max-width: 1050px; margin: 46px auto 0; padding: 0 15px 70px; }
+.woocommerce-cart .entry-title { font-family: "Italiana", serif; font-size: 2rem; letter-spacing: .06em; text-transform: uppercase; margin: 0 0 28px; color: #0a0a0a; }
+.woocommerce-cart .shop_table { width: 100%; border-collapse: collapse; border: 1px solid #e8e3de; }
+.woocommerce-cart .shop_table th { background: #f7f5f2; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; font-weight: 600; padding: 12px 14px; text-align: left; border-bottom: 1px solid #e8e3de; }
+.woocommerce-cart .shop_table td { padding: 14px; border-bottom: 1px solid #eee9e4; vertical-align: middle; }
+.woocommerce-cart .shop_table .product-thumbnail img { width: 84px; height: 84px; object-fit: cover; display: block; }
+.woocommerce-cart .shop_table .product-name a { color: #0a0a0a; font-weight: 600; }
+.woocommerce-cart .shop_table .product-name .product-cat { margin: 4px 0 0; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #926c51; }
+.woocommerce-cart .shop_table .product-remove .remove { display: inline-flex; width: 26px; height: 26px; align-items: center; justify-content: center; border: 1px solid #ddd6cf; border-radius: 50%; color: #8a7d72 !important; font-size: 18px; line-height: 1; }
+.woocommerce-cart .shop_table .product-remove .remove:hover { background: #0a0a0a; border-color: #0a0a0a; color: #fff !important; }
+.woocommerce-cart .quantity { display: inline-flex; align-items: center; border: 1px solid #ddd6cf; }
+.woocommerce-cart .quantity input.qty { width: 44px; height: 34px; border: 0; text-align: center; -moz-appearance: textfield; }
+.woocommerce-cart .quantity input.qty::-webkit-outer-spin-button,
+.woocommerce-cart .quantity input.qty::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.woocommerce-cart .quantity .button { width: 30px; height: 34px; border: 0; background: #f7f5f2; color: #0a0a0a; cursor: pointer; }
+.woocommerce-cart .quantity .button:hover { background: #0a0a0a; color: #fff; }
+.woocommerce-cart .cart-actions { margin-top: 18px; }
+.woocommerce-cart .cart-collaterals { display: flex; justify-content: flex-end; margin-top: 30px; }
+.woocommerce-cart .cart_totals { width: 100%; max-width: 380px; background: #f7f5f2; padding: 24px; }
+.woocommerce-cart .cart_totals h2 { font-family: "Italiana", serif; font-size: 1.3rem; letter-spacing: .06em; text-transform: uppercase; margin: 0 0 16px; }
+.woocommerce-cart .cart_totals table { width: 100%; border-collapse: collapse; }
+.woocommerce-cart .cart_totals th, .woocommerce-cart .cart_totals td { padding: 8px 0; border-bottom: 1px solid #e5ded6; text-align: left; font-size: 14px; }
+.woocommerce-cart .cart_totals td { text-align: right; font-weight: 600; }
+.woocommerce-cart .cart_totals .checkout-button { display: block; text-align: center; margin-top: 18px; background: #0a0a0a; color: #fff !important; padding: 13px 20px; letter-spacing: .08em; text-transform: uppercase; font-size: 12px; }
+.woocommerce-cart .cart_totals .checkout-button:hover { background: #926c51; }
+.woocommerce-cart .cart-empty { border: 1px solid #e8e3de; padding: 28px; text-align: center; font-size: 15px; }
+.woocommerce-cart .cart-empty a { color: #926c51; text-decoration: underline; }
+
+@media (max-width: 549px) {
+  .woocommerce-cart .cart-container { margin-top: 28px; padding: 0 15px 50px; }
+  .woocommerce-cart .entry-title { font-size: 1.6rem; margin-bottom: 18px; }
+  .woocommerce-cart .shop_table { border: 0; }
+  .woocommerce-cart .shop_table thead { display: none; }
+  .woocommerce-cart .shop_table, .woocommerce-cart .shop_table tbody,
+  .woocommerce-cart .shop_table tr, .woocommerce-cart .shop_table td { display: block; width: 100%; }
+  .woocommerce-cart .shop_table tr.cart_item {
+    position: relative; padding: 16px 0; border-bottom: 1px solid #eee9e4;
+    display: grid; grid-template-columns: 84px 1fr; grid-template-areas:
+      "thumb name" "thumb price" "qty qty" "sub sub"; gap: 8px 14px; align-items: start;
+  }
+  .woocommerce-cart .shop_table .product-thumbnail { grid-area: thumb; }
+  .woocommerce-cart .shop_table .product-name { grid-area: name; padding-right: 30px; display: block; }
+  .woocommerce-cart .shop_table .product-name::before { display: block; margin-bottom: 2px; }
+  .woocommerce-cart .shop_table .product-name .product-cat { margin: 4px 0 0; white-space: normal; }
+  .woocommerce-cart .shop_table .product-price { grid-area: price; }
+  .woocommerce-cart .shop_table .product-quantity { grid-area: qty; margin-top: 6px; }
+  .woocommerce-cart .shop_table .product-subtotal { grid-area: sub; text-align: right; }
+  .woocommerce-cart .shop_table td { padding: 0; border: 0; }
+  .woocommerce-cart .shop_table .product-price::before,
+  .woocommerce-cart .shop_table .product-subtotal::before { content: attr(data-title) ": "; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #8a7d72; font-weight: 600; }
+  .woocommerce-cart .shop_table .product-remove { position: absolute; top: 16px; right: 0; width: 26px; z-index: 2; }
+  .woocommerce-cart .shop_table .product-remove .remove { background: #fff; }
+  .woocommerce-cart .cart-actions .button { display: block; text-align: center; }
+  .woocommerce-cart .cart-collaterals { margin-top: 22px; }
+}
+
+/* ---------- product page ---------- */
+body.cavani-cat .header-main { height: 87px; }
+body.cavani-cat #logo img { max-height: 87px; }
+.single-product .product-main { padding: 40px 0; }
+.single-product .product-gallery img { width: 100%; height: auto; display: block; }
+.single-product .product-thumbnails img { width: 100%; height: auto; display: block; }
+.single-product .product-title { font-family: "Crimson Text", serif; font-size: 1.7em; line-height: 1.3; letter-spacing: normal; margin: 0 0 13.6px; }
+.single-product .product-page-price { font-size: 1.35rem; color: #926c51; font-weight: 600; margin-bottom: 18px; }
+.single-product .product-short-description { font-size: 16px; }
+.single-product .parameter-list { width: 100%; border-collapse: collapse; margin: 10px 0 16px; }
+.single-product .parameter-list td { padding: 7.2px 7.2px 7.2px 0; border-bottom: 1px solid #eee9e4; vertical-align: top; font-size: 14.4px; }
+.single-product .parameter-list .specname { width: 45%; }
+.single-product .cart { display: flex; align-items: center; gap: 12px; margin: 0 0 20.8px; }
+.single-product .single_add_to_cart_button { background: #fff; color: #0a0a0a; border: 0; padding: 0 19.2px; letter-spacing: .03em; text-transform: uppercase; font-size: 16px; line-height: 2.4em; cursor: pointer; }
+.single-product .single_add_to_cart_button:hover { background: #0a0a0a; color: #fff; }
+.single-product .product-footer { margin-top: 0; }
+.single-product .product-tabs { margin-bottom: 20px; }
+.single-product .tab-panels .panel { display: none; padding: 10px 0 20px; }
+.single-product .tab-panels .panel.active { display: block; }
+.single-product .related-products-wrapper { margin-top: 20px; }
+.single-product .product-section-title { font-family: "Italiana", serif; font-size: 1.5rem; letter-spacing: .08em; margin: 20px 0 18px; }
+.single-product .product-sidebar-small .widget-title { font-size: 12px; letter-spacing: .1em; }
+.single-product .product-categories li { list-style: none; margin: 0 0 8px; }
+.single-product .product-categories a { color: #5f554c; font-size: 13px; }
+.single-product .product-categories .current-cat > a { color: #926c51; font-weight: 700; }
+
+/* ---------- generic content pages ---------- */
+.cavani-page { padding: 56px 0 80px; }
+.cavani-page .page-hero { text-align: center; margin-bottom: 34px; }
+.cavani-page .page-hero h1 { font-family: "Italiana", serif; font-size: 2.6rem; letter-spacing: .08em; margin: 0 0 10px; }
+.cavani-page .page-hero .subtitle { font-size: 12px; letter-spacing: .22em; text-transform: uppercase; color: #926c51; }
+.cavani-page h2 { font-family: "Italiana", serif; font-size: 1.7rem; letter-spacing: .05em; margin: 30px 0 14px; }
+.cavani-page p { line-height: 1.85; color: #3f3a35; }
+.cavani-page .lead { font-size: 17px; color: #0a0a0a; }
+.cavani-page .content-img { width: 100%; height: auto; display: block; margin: 20px 0; }
+.cavani-page .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
+.cavani-page .three-col { display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; }
+.cavani-page .info-card { border: 1px solid #e8e3de; padding: 26px; background: #fff; }
+.cavani-page .info-card h3 { font-family: "Italiana", serif; font-size: 1.25rem; letter-spacing: .04em; margin: 0 0 10px; }
+.cavani-page .info-card p { margin: 0 0 6px; font-size: 14px; }
+.cavani-page .btn-dark { display: inline-block; background: #0a0a0a; color: #fff !important; padding: 12px 28px; letter-spacing: .1em; text-transform: uppercase; font-size: 11px; margin-top: 14px; }
+.cavani-page .btn-dark:hover { background: #926c51; }
+.cavani-page .project-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.cavani-page .project-card { position: relative; overflow: hidden; display: block; }
+.cavani-page .project-card img { width: 100%; height: 260px; object-fit: cover; display: block; transition: transform .6s ease; }
+.cavani-page .project-card:hover img { transform: scale(1.06); }
+.cavani-page .project-card .caption { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(182, 162, 105, .9); color: #fff; padding: 12px 14px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
+.cavani-page .news-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; }
+.cavani-page .news-card img { width: 100%; height: 210px; object-fit: cover; display: block; }
+.cavani-page .news-card h3 { font-family: "Noto Sans", sans-serif; font-size: 15px; line-height: 1.45; margin: 12px 0 6px; }
+.cavani-page .news-card p { font-size: 13px; color: #6b625a; }
+.cavani-page .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+.cavani-page .contact-form input, .cavani-page .contact-form textarea { width: 100%; border: 1px solid #ddd6cf; padding: 11px 13px; margin-bottom: 12px; font-size: 14px; background: #fff; }
+.cavani-page .contact-form textarea { min-height: 120px; resize: vertical; }
+.cavani-page .contact-form button { background: #0a0a0a; color: #fff; border: 0; padding: 12px 26px; letter-spacing: .1em; text-transform: uppercase; font-size: 11px; cursor: pointer; }
+.cavani-page .contact-form button:hover { background: #926c51; }
+
+@media (max-width: 849px) {
+  .woocommerce-cart .shop_table thead { display: none; }
+  .woocommerce-cart .shop_table tr { display: block; border-bottom: 1px solid #e8e3de; padding: 10px 0; }
+  .woocommerce-cart .shop_table td { display: flex; justify-content: space-between; align-items: center; border: 0; padding: 7px 12px; }
+  .woocommerce-cart .shop_table td::before { content: attr(data-title); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #8a7d72; }
+  .woocommerce-cart .shop_table td.product-remove::before,
+  .woocommerce-cart .shop_table td.product-thumbnail::before { display: none; }
+  .woocommerce-cart .cart-collaterals { justify-content: stretch; }
+  .woocommerce-cart .cart_totals { max-width: none; }
+  .cavani-page .two-col, .cavani-page .three-col, .cavani-page .project-grid, .cavani-page .news-grid, .cavani-page .contact-grid { grid-template-columns: 1fr; }
+  .cavani-page .page-hero h1 { font-size: 2rem; }
+}

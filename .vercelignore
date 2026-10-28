@@ -1,0 +1,9 @@
+.git
+.vercel
+.playwright-mcp
+docs
+scripts
+data
+*.md
+/*.png
+__pycache__
