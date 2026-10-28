@@ -86,6 +86,11 @@ def localize(soup):
     for st_tag in soup.find_all('style'):
         if st_tag.string and 'cavani.vn' in st_tag.string:
             st_tag.string = UPLOAD_RE.sub(lambda m: localize_url(m.group(0)), st_tag.string)
+    # never let a form fall back to submitting to the live site
+    for form in soup.find_all('form'):
+        action = form.get('action') or ''
+        if 'cavani.vn' in action:
+            form['action'] = '/'
     # fl-icons @font-face
     for st_tag in soup.find_all('style'):
         if st_tag.string and 'fl-icons' in st_tag.string:
@@ -260,6 +265,12 @@ def fix_lazy_images(soup):
         if ds:
             el['src'] = ds
         del el['data-flickity-lazyload']
+    # responsive data attributes are unused by the local Flatsome runtime and
+    # still point at the live CDN; the promoted src is already local.
+    for el in soup.select('[data-srcset], [data-sizes]'):
+        for attr in ('data-srcset', 'data-sizes'):
+            if el.has_attr(attr):
+                del el[attr]
 
 def strip_unwanted(soup):
     # stale LiteSpeed critical CSS: the live custom CSS has this commented out
@@ -402,16 +413,22 @@ def fix_content_links(soup):
         'Đèn bàn Châu Âu': 'den-trang-tri.html',
         'Đèn ốp Châu Âu': 'den-trang-tri.html',
     }
-    for a in soup.find_all('a', href='#'):
+    for a in soup.find_all('a'):
         t = a.get_text(' ', strip=True)
-        if a.find_parent(class_='blog-post') or a.find_parent(class_='image-cover'):
+        is_blog = (
+            a.find_parent(class_='box-blog-post')
+            or a.find_parent(class_='blog-post')
+            or a.find_parent(class_='image-cover')
+        )
+        if is_blog and a.get('href') in (None, '#', './', 'index.html'):
             a['href'] = 'category/tin-tuc-cavani.html'
-        elif t == 'Possoni – Ý':
-            a['href'] = 've-chung-toi.html'
-        elif t in footer_map:
-            a['href'] = footer_map[t]
-        elif t == 'Đăng nhập':
-            a['href'] = 'lien-he.html'
+        elif a.get('href') == '#':
+            if t == 'Possoni – Ý':
+                a['href'] = 've-chung-toi.html'
+            elif t in footer_map:
+                a['href'] = footer_map[t]
+            elif t == 'Đăng nhập':
+                a['href'] = 'lien-he.html'
     for img in soup.find_all('img'):
         src = img.get('src') or ''
         if 'nguyenhung.net' in src:
@@ -555,6 +572,7 @@ def build_home():
     rewrite_internal_links(soup)
     fix_nav(soup)
     fix_home_content(soup)
+    fix_content_links(soup)
     # cart link text + count
     for a in soup.select('a.header-cart-link'):
         a['href'] = 'cart.html'
