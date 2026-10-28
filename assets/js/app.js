@@ -6,12 +6,16 @@
   var PRODUCTS = window.CAVANI_PRODUCTS || [];
   var CART_KEY = 'cavani_cart_v1';
   var CAT_FILE = {
-    'serip': BASE + 'serip-lighting/',
-    'baccarat': BASE + 'baccarat-lighting/',
-    'tan-co-dien': BASE + 'den-tan-co-dien/'
+    'serip': BASE + 'den-chum-hien-dai/',
+    'baccarat': BASE + 'den-chum-pha-le/',
+    'tan-co-dien': BASE + 'den-chum-co-dien/'
   };
   function asset(u) {
     return /^(?:[a-z]+:|\/\/|\/|#)/i.test(u) ? u : BASE + u;
+  }
+  function productHref(p) {
+    if (p && p.url) return BASE + String(p.url).replace(/^\/+/, '');
+    return BASE + 'den-trang-tri/';
   }
   var CAT_LABEL = {
     'serip': 'SERIP LIGHTING',
@@ -63,7 +67,7 @@
       ids.forEach(function (id) {
         var p = findProduct(id); if (!p) return;
         html += '<li class="woocommerce-mini-cart-item mini_cart_item">' +
-          '<a href="' + BASE + 'product/?id=' + encodeURIComponent(id) + '"><img src="' + esc(asset(p.img)) + '" alt="' + esc(p.name) + '"/>' + esc(p.name) + '</a>' +
+          '<a href="' + productHref(p) + '"><img src="' + esc(asset(p.img)) + '" alt="' + esc(p.name) + '"/>' + esc(p.name) + '</a>' +
           '<span class="quantity">' + cart[id] + ' × <span class="woocommerce-Price-amount amount"><bdi>' + money(p.price) + '</bdi></span></span>' +
           '<a href="#" class="remove" data-remove="' + esc(id) + '" aria-label="Xóa">×</a></li>';
       });
@@ -74,7 +78,7 @@
   }
 
   function productCard(p) {
-    var href = BASE + 'product/?id=' + encodeURIComponent(p.id);
+    var href = productHref(p);
     return '<div class="product-small col has-hover product type-product status-publish instock product_cat-' + p.cat + ' has-post-thumbnail shipping-taxable purchasable product-type-simple">' +
       '<div class="col-inner"><div class="badge-container absolute left top z-1"></div>' +
       '<div class="product-small box"><div class="box-image"><div class="image-zoom">' +
@@ -94,7 +98,8 @@
     var titleEl = document.getElementById('pdp-title');
     if (!titleEl) return;
     var params = new URLSearchParams(window.location.search);
-    var p = findProduct(params.get('id')) || PRODUCTS[0];
+    var bodyId = document.body.getAttribute('data-product-id');
+    var p = findProduct(bodyId) || findProduct(params.get('id')) || PRODUCTS[0];
     if (!p) return;
     var catHref = CAT_FILE[p.cat] || HOME;
     var material = p.cat === 'baccarat' ? 'Pha lê Baccarat, đồng mạ vàng 24K' :
@@ -127,7 +132,8 @@
     var attrCat = document.getElementById('pdp-attr-cat'); if (attrCat) attrCat.textContent = p.catName;
     var attrMat = document.getElementById('pdp-attr-material'); if (attrMat) attrMat.textContent = material;
     var attrOrigin = document.getElementById('pdp-attr-origin'); if (attrOrigin) attrOrigin.textContent = origin;
-    var sideActive = document.querySelector('#product-sidebar .product-categories a[href="' + catHref + '"]');
+    var sideActive = document.querySelector('#product-sidebar .product-categories a[data-cat="' + p.cat + '"]') ||
+      document.querySelector('#product-sidebar .product-categories a[href="' + catHref + '"]');
     if (sideActive) sideActive.parentElement.classList.add('current-cat');
 
     var related = PRODUCTS.filter(function (x) { return x.cat === p.cat && x.id !== p.id; }).slice(0, 4);
@@ -157,7 +163,7 @@
           box.innerHTML = '<div class="autocomplete-suggestions"><div class="autocomplete-no-results">Không tìm thấy sản phẩm phù hợp.</div></div>';
         } else {
           box.innerHTML = '<div class="autocomplete-suggestions">' + hits.map(function (p) {
-            return '<a class="autocomplete-suggestion" href="' + BASE + 'product/?id=' + encodeURIComponent(p.id) + '">' +
+            return '<a class="autocomplete-suggestion" href="' + productHref(p) + '">' +
               '<img src="' + esc(asset(p.img)) + '" alt="' + esc(p.name) + '"/>' +
               '<span class="title">' + esc(p.name) + '</span>' +
               '<span class="price">' + money(p.price) + '</span></a>';
@@ -189,8 +195,8 @@
       var qty = cart[id];
       html += '<tr class="woocommerce-cart-form__cart-item cart_item">' +
         '<td class="product-remove"><a href="#" class="remove" data-remove="' + esc(id) + '" aria-label="Xóa">×</a></td>' +
-        '<td class="product-thumbnail"><a href="' + BASE + 'product/?id=' + encodeURIComponent(id) + '"><img src="' + esc(asset(p.img)) + '" alt="' + esc(p.name) + '"/></a></td>' +
-        '<td class="product-name" data-title="Sản phẩm"><a href="' + BASE + 'product/?id=' + encodeURIComponent(id) + '">' + esc(p.name) + '</a><p class="product-cat">' + esc(p.catName) + '</p></td>' +
+        '<td class="product-thumbnail"><a href="' + productHref(p) + '"><img src="' + esc(asset(p.img)) + '" alt="' + esc(p.name) + '"/></a></td>' +
+        '<td class="product-name" data-title="Sản phẩm"><a href="' + productHref(p) + '">' + esc(p.name) + '</a><p class="product-cat">' + esc(p.catName) + '</p></td>' +
         '<td class="product-price" data-title="Giá"><span class="woocommerce-Price-amount amount"><bdi>' + money(p.price) + '</bdi></span></td>' +
         '<td class="product-quantity" data-title="Số lượng"><div class="quantity buttons_added">' +
         '<input type="button" class="minus button is-form" value="-"/>' +

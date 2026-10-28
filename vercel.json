@@ -1,3 +1,58 @@
 {
-  "trailingSlash": true
+  "trailingSlash": true,
+  "redirects": [
+    { "source": "/index.html", "destination": "/", "permanent": true },
+
+    { "source": "/serip-lighting", "destination": "/den-chum-hien-dai/", "permanent": true },
+    { "source": "/serip-lighting/", "destination": "/den-chum-hien-dai/", "permanent": true },
+    { "source": "/serip-lighting.html", "destination": "/den-chum-hien-dai/", "permanent": true },
+
+    { "source": "/baccarat-lighting", "destination": "/den-chum-pha-le/", "permanent": true },
+    { "source": "/baccarat-lighting/", "destination": "/den-chum-pha-le/", "permanent": true },
+    { "source": "/baccarat-lighting.html", "destination": "/den-chum-pha-le/", "permanent": true },
+
+    { "source": "/den-tan-co-dien", "destination": "/den-chum-co-dien/", "permanent": true },
+    { "source": "/den-tan-co-dien/", "destination": "/den-chum-co-dien/", "permanent": true },
+    { "source": "/den-tan-co-dien.html", "destination": "/den-chum-co-dien/", "permanent": true },
+
+    { "source": "/product", "destination": "/den-trang-tri/", "permanent": true },
+    { "source": "/product/", "destination": "/den-trang-tri/", "permanent": true },
+    { "source": "/product.html", "destination": "/den-trang-tri/", "permanent": true },
+
+    { "source": "/about", "destination": "/ve-chung-toi/", "permanent": true },
+    { "source": "/about/", "destination": "/ve-chung-toi/", "permanent": true },
+    { "source": "/about.html", "destination": "/ve-chung-toi/", "permanent": true },
+
+    { "source": "/contact", "destination": "/lien-he/", "permanent": true },
+    { "source": "/contact/", "destination": "/lien-he/", "permanent": true },
+    { "source": "/contact.html", "destination": "/lien-he/", "permanent": true },
+
+    { "source": "/projects", "destination": "/du-an-tieu-bieu/", "permanent": true },
+    { "source": "/projects/", "destination": "/du-an-tieu-bieu/", "permanent": true },
+    { "source": "/projects.html", "destination": "/du-an-tieu-bieu/", "permanent": true },
+
+    { "source": "/news", "destination": "/category/tin-tuc-cavani/", "permanent": true },
+    { "source": "/news/", "destination": "/category/tin-tuc-cavani/", "permanent": true },
+    { "source": "/news.html", "destination": "/category/tin-tuc-cavani/", "permanent": true },
+
+    { "source": "/services", "destination": "/thiet-ke-chieu-sang/", "permanent": true },
+    { "source": "/services/", "destination": "/thiet-ke-chieu-sang/", "permanent": true },
+    { "source": "/services.html", "destination": "/thiet-ke-chieu-sang/", "permanent": true },
+
+    { "source": "/den-trang-tri.html", "destination": "/den-trang-tri/", "permanent": true },
+    { "source": "/den-chieu-sang.html", "destination": "/den-chieu-sang/", "permanent": true },
+    { "source": "/luxury-decor.html", "destination": "/luxury-decor/", "permanent": true },
+    { "source": "/den-chum-hien-dai.html", "destination": "/den-chum-hien-dai/", "permanent": true },
+    { "source": "/den-chum-pha-le.html", "destination": "/den-chum-pha-le/", "permanent": true },
+    { "source": "/den-chum-co-dien.html", "destination": "/den-chum-co-dien/", "permanent": true },
+    { "source": "/thiet-ke-den-trang-tri.html", "destination": "/thiet-ke-den-trang-tri/", "permanent": true },
+    { "source": "/thiet-ke-chieu-sang.html", "destination": "/thiet-ke-chieu-sang/", "permanent": true },
+    { "source": "/thiet-ke-doc-ban.html", "destination": "/thiet-ke-doc-ban/", "permanent": true },
+    { "source": "/du-an-tieu-bieu.html", "destination": "/du-an-tieu-bieu/", "permanent": true },
+    { "source": "/category/tin-tuc-cavani.html", "destination": "/category/tin-tuc-cavani/", "permanent": true },
+    { "source": "/thanh-toan-va-bao-hanh.html", "destination": "/thanh-toan-va-bao-hanh/", "permanent": true },
+    { "source": "/ve-chung-toi.html", "destination": "/ve-chung-toi/", "permanent": true },
+    { "source": "/lien-he.html", "destination": "/lien-he/", "permanent": true },
+    { "source": "/cart.html", "destination": "/cart/", "permanent": true }
+  ]
 }

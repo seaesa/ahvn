@@ -158,3 +158,10 @@ body.cavani-cat #logo img { max-height: 87px; }
   .cavani-page .two-col, .cavani-page .three-col, .cavani-page .project-grid, .cavani-page .news-grid, .cavani-page .contact-grid { grid-template-columns: 1fr; }
   .cavani-page .page-hero h1 { font-size: 2rem; }
 }
+
+/* Active submenu link visibility */
+#main-menu .sub-menu li.active > a,
+#main-menu .nav-dropdown li.active > a,
+ul.header-nav .nav-dropdown li.active > a {
+  color: rgba(18, 18, 18, 0.95) !important;
+}

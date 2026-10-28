@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Build the static Cavani clone from captured research artifacts."""
-import json, os, re, copy
+import json, os, re, copy, shutil, unicodedata
 from bs4 import BeautifulSoup, NavigableString
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -93,86 +93,112 @@ def localize(soup):
                                    lambda m: 'assets/fonts/fl-icons.' + m.group(1), st_tag.string)
 
 def rewrite_internal_links(soup):
-    mapping = {
-        r'^https?://cavani\.vn/?$': 'index.html',
-        r'^https?://cavani\.vn/den-trang-tri/?$': 'den-tan-co-dien.html',
-        r'^https?://cavani\.vn/den-chum-co-dien/?$': 'den-tan-co-dien.html',
-        r'^https?://cavani\.vn/danh-muc-san-pham/den-chum/den-chum-co-dien/?$': 'den-tan-co-dien.html',
-        r'^https?://cavani\.vn/den-chum-pha-le/?$': 'baccarat-lighting.html',
-        r'^https?://cavani\.vn/danh-muc-san-pham/den-chum/den-chum-pha-le/?$': 'baccarat-lighting.html',
-        r'^https?://cavani\.vn/den-chum-hien-dai/?$': 'serip-lighting.html',
-        r'^https?://cavani\.vn/danh-muc-san-pham/den-chum/den-chum-hien-dai/?$': 'serip-lighting.html',
-        r'^https?://cavani\.vn/cart/?$': 'cart.html',
-        r'^https?://cavani\.vn/lien-he/?$': 'contact.html',
-        r'^https?://cavani\.vn/ve-chung-toi/?$': 'about.html',
-        r'^https?://cavani\.vn/du-an-tieu-bieu/?$': 'projects.html',
-        r'^https?://cavani\.vn/thiet-ke-den-trang-tri/?$': 'services.html',
-        r'^https?://cavani\.vn/thiet-ke-chieu-sang/?$': 'services.html',
-        r'^https?://cavani\.vn/thiet-ke-doc-ban/?$': 'services.html',
-        r'^https?://cavani\.vn/category/tin-tuc-cavani/?$': 'news.html',
-        r'^https?://cavani\.vn/thanh-toan-va-bao-hanh/?$': 'news.html',
-        r'^https?://cavani\.vn/den-chieu-sang/?$': 'serip-lighting.html',
-        r'^https?://cavani\.vn/luxury-decor/?$': 'baccarat-lighting.html',
+    exact = {
+        '/': 'index.html',
+        '/den-trang-tri/': 'den-trang-tri.html',
+        '/den-chieu-sang/': 'den-chieu-sang.html',
+        '/luxury-decor/': 'luxury-decor.html',
+        '/den-chum-co-dien/': 'den-chum-co-dien.html',
+        '/den-chum-pha-le/': 'den-chum-pha-le.html',
+        '/den-chum-hien-dai/': 'den-chum-hien-dai.html',
+        '/danh-muc-san-pham/den-chum/den-chum-co-dien/': 'den-chum-co-dien.html',
+        '/danh-muc-san-pham/den-chum/den-chum-pha-le/': 'den-chum-pha-le.html',
+        '/danh-muc-san-pham/den-chum/den-chum-hien-dai/': 'den-chum-hien-dai.html',
+        '/cart/': 'cart.html',
+        '/lien-he/': 'lien-he.html',
+        '/ve-chung-toi/': 've-chung-toi.html',
+        '/du-an-tieu-bieu/': 'du-an-tieu-bieu.html',
+        '/thiet-ke-den-trang-tri/': 'thiet-ke-den-trang-tri.html',
+        '/thiet-ke-chieu-sang/': 'thiet-ke-chieu-sang.html',
+        '/thiet-ke-doc-ban/': 'thiet-ke-doc-ban.html',
+        '/category/tin-tuc-cavani/': 'category/tin-tuc-cavani.html',
+        '/thanh-toan-va-bao-hanh/': 'thanh-toan-va-bao-hanh.html',
     }
     for a in soup.find_all('a', href=True):
         h = a['href']
-        done = False
-        for pat, dest in mapping.items():
-            if re.match(pat, h):
-                a['href'] = dest
-                done = True
-                break
-        if done:
+        if h.startswith('https://cavani.vn'):
+            path = h[len('https://cavani.vn'):] or '/'
+        elif h.startswith('http://cavani.vn'):
+            path = h[len('http://cavani.vn'):] or '/'
+        elif h.startswith('/') and not h.startswith('//'):
+            path = h
+        else:
             continue
-        if h.startswith('https://cavani.vn/'):
-            if '/video/' in h or '/du-an' in h:
-                a['href'] = 'projects.html'
-            elif '/den-chum' in h or '/den-trang-tri' in h:
-                a['href'] = 'den-tan-co-dien.html'
-            elif h.rstrip('/').split('/')[-1] in ('den-chum-chau-au-cao-cap',):
-                a['href'] = 'news.html'
-            elif h.count('/') >= 5:
-                a['href'] = 'news.html'
+        if path in exact:
+            a['href'] = exact[path]
+            continue
+        # product pages and other deep links: send to the matching collection
+        for prefix, dest in [
+            ('/den-chum-co-dien/', 'den-chum-co-dien.html'),
+            ('/den-chum-pha-le/', 'den-chum-pha-le.html'),
+            ('/den-chum-hien-dai/', 'den-chum-hien-dai.html'),
+            ('/den-chum/', 'den-trang-tri.html'),
+            ('/den-trang-tri/', 'den-trang-tri.html'),
+            ('/den-chieu-sang/', 'den-chieu-sang.html'),
+            ('/luxury-decor/', 'luxury-decor.html'),
+            ('/den-tuong/', 'den-trang-tri.html'),
+            ('/den-ban/', 'den-trang-tri.html'),
+            ('/den-op/', 'den-trang-tri.html'),
+        ]:
+            if path.startswith(prefix):
+                a['href'] = dest
+                break
+        else:
+            if '/du-an' in path or '/video/' in path:
+                a['href'] = 'du-an-tieu-bieu.html'
+            elif '/tin-tuc' in path or '/blog' in path or path.count('/') >= 4:
+                a['href'] = 'category/tin-tuc-cavani.html'
             else:
-                a['href'] = '#'
+                a['href'] = 'index.html'
 
 def fix_nav(soup):
-    """Rewrite the main menu and mobile menu to the three requested collections."""
-    # Desktop + mobile share menu item ids; update every SẢN PHẨM submenu.
-    for li in soup.select('li.menu-item-has-children'):
+    """Rewrite the main menu and mobile menu to match the live Cavani structure."""
+    nav_map = {
+        'SẢN PHẨM': ('/den-trang-tri/', [
+            ('ĐÈN TRANG TRÍ', '/den-trang-tri/'),
+            ('ĐÈN CHIẾU SÁNG', '/den-chieu-sang/'),
+            ('LUXURY DECOR', '/luxury-decor/'),
+        ]),
+        'DỊCH VỤ': ('/thiet-ke-chieu-sang/', [
+            ('THIẾT KẾ ĐÈN TRANG TRÍ', '/thiet-ke-den-trang-tri/'),
+            ('THIẾT KẾ CHIẾU SÁNG', '/thiet-ke-chieu-sang/'),
+            ('THIẾT KẾ ĐỘC BẢN', '/thiet-ke-doc-ban/'),
+        ]),
+        'TIN TỨC': ('/category/tin-tuc-cavani/', [
+            ('THANH TOÁN VÀ BẢO HÀNH', '/thanh-toan-va-bao-hanh/'),
+            ('VỀ CHÚNG TÔI', '/ve-chung-toi/'),
+        ]),
+    }
+    for li in soup.select('#main-menu li.menu-item-has-children, ul.header-nav li.menu-item-has-children'):
         a = li.find('a', recursive=False)
         if not a:
             continue
         label = a.get_text(' ', strip=True).upper()
-        sub = li.find('ul', class_='sub-menu')
-        if not sub:
+        for key, (href, children) in nav_map.items():
+            if key in label:
+                a['href'] = href
+                sub = li.find('ul', class_='sub-menu')
+                if sub:
+                    for child, (clabel, chref) in zip(sub.find_all('li', recursive=False), children):
+                        ca = child.find('a')
+                        if ca:
+                            ca['href'] = chref
+                            ca.string = clabel
+                break
+    # Simple top-level items (desktop + mobile)
+    for li in soup.select('#main-menu > .sidebar-menu > ul > li, ul.header-nav > li'):
+        a = li.find('a', recursive=False)
+        if not a:
             continue
-        if 'SẢN PHẨM' in label:
-            for i, child in enumerate(sub.find_all('li', recursive=False)):
-                ca = child.find('a')
-                if not ca:
-                    continue
-                if i == 0:
-                    ca['href'] = 'serip-lighting.html'; ca.string = 'SERIP LIGHTING'
-                elif i == 1:
-                    ca['href'] = 'baccarat-lighting.html'; ca.string = 'BACCARAT LIGHTING'
-                elif i == 2:
-                    ca['href'] = 'den-tan-co-dien.html'; ca.string = 'ĐÈN TÂN CỔ ĐIỂN'
-            a['href'] = 'serip-lighting.html'
-        elif 'DỊCH VỤ' in label:
-            a['href'] = 'services.html'
-            for child in sub.find_all('li', recursive=False):
-                ca = child.find('a')
-                if ca: ca['href'] = 'services.html'
-        elif 'TIN TỨC' in label:
-            a['href'] = 'news.html'
-            for child in sub.find_all('li', recursive=False):
-                ca = child.find('a')
-                if not ca: continue
-                if 'VỀ CHÚNG TÔI' in ca.get_text(' ', strip=True).upper():
-                    ca['href'] = 'about.html'
-                else:
-                    ca['href'] = 'news.html'
+        label = a.get_text(' ', strip=True).upper()
+        if 'TRANG CH' in label:
+            a['href'] = '/'
+        elif label == 'DỰ ÁN':
+            a['href'] = '/du-an-tieu-bieu/'
+        elif label == 'LIÊN HỆ':
+            a['href'] = '/lien-he/'
+        elif 'ĐĂNG NHẬP' in label:
+            a['href'] = '/lien-he/'
     # Flatsome injects the submenu toggle at runtime; captured DOM already has it -> drop all
     for btn in soup.select('#main-menu button.toggle'):
         btn.decompose()
@@ -183,9 +209,9 @@ def fix_home_content(soup):
     cards = soup.select('#section_1784693606 .col.codien')
     if len(cards) >= 3:
         data = [
-            ('assets/img/Den-chum-hien-dai-Chau-Au-sang-trong-2-scaled.jpg', 'SERIP Lighting', 'serip-lighting.html', 'SERIP LIGHTING'),
-            ('assets/img/phale.jpg', 'Baccarat Lighting', 'baccarat-lighting.html', 'BACCARAT LIGHTING'),
-            ('assets/img/codien4.jpg', 'Đèn Tân Cổ Điển', 'den-tan-co-dien.html', 'ĐÈN TÂN CỔ ĐIỂN'),
+            ('assets/img/Den-chum-hien-dai-Chau-Au-sang-trong-2-scaled.jpg', 'SERIP Lighting', '/den-chum-hien-dai/', 'SERIP LIGHTING'),
+            ('assets/img/phale.jpg', 'Baccarat Lighting', '/den-chum-pha-le/', 'BACCARAT LIGHTING'),
+            ('assets/img/codien4.jpg', 'Đèn Tân Cổ Điển', '/den-chum-co-dien/', 'ĐÈN TÂN CỔ ĐIỂN'),
         ]
         for col, (img, alt, href, label) in zip(cards, data):
             im = col.select_one('img')
@@ -205,8 +231,8 @@ def fix_home_content(soup):
     hero = soup.select_one('#slider-1222362058')
     if hero:
         for a in hero.find_all('a', href=True):
-            if a['href'].startswith('https://cavani.vn/'):
-                a['href'] = 'den-tan-co-dien.html'
+            if a['href'].startswith(('https://cavani.vn/', '/')) and not a['href'].startswith('//'):
+                a['href'] = '/den-trang-tri/'
 
 def fix_lazy_images(soup):
     """LiteSpeed/Flatsome lazyload markup leaves placeholder src values behind.
@@ -331,13 +357,15 @@ def script_tags(prefix=''):
 <script src="%sassets/js/app.js"></script>
 ''' % (prefix, vars_js, prefix, prefix, prefix, prefix, prefix, prefix)
 
-LINK_HTML_RE = re.compile(r'^(?:\./)?([a-z0-9][a-z0-9-]*)\.html((?:\?[^#]*)?(?:#.*)?)$')
+LINK_HTML_RE = re.compile(
+    r'^(?:\./)?((?:[a-z0-9][a-z0-9-]*/)*[a-z0-9][a-z0-9-]*)\.html((?:\?[^#]*)?(?:#.*)?)$'
+)
 
 def clean_urls(soup, prefix=''):
     """Turn flat *.html links into directory URLs and rebase local assets."""
     for a in soup.find_all('a', href=True):
         h = a['href']
-        if not h or h.startswith(('http://', 'https://', '//', 'mailto:', 'tel:', 'javascript:', '#')):
+        if not h or h.startswith(('http://', 'https://', '//', '/', 'mailto:', 'tel:', 'javascript:', '#')):
             continue
         m = LINK_HTML_RE.match(h)
         if not m:
@@ -350,6 +378,8 @@ def clean_urls(soup, prefix=''):
 
     for tag in soup.find_all(True):
         for attr, v in list(tag.attrs.items()):
+            if attr == 'srcset':
+                continue
             if isinstance(v, str) and v.startswith('assets/'):
                 tag[attr] = prefix + v
         st = tag.get('style')
@@ -368,36 +398,140 @@ def clean_urls(soup, prefix=''):
 
 def fix_content_links(soup):
     footer_map = {
-        'Đèn tường Châu Âu': 'serip-lighting.html',
-        'Đèn bàn Châu Âu': 'baccarat-lighting.html',
-        'Đèn ốp Châu Âu': 'serip-lighting.html',
+        'Đèn tường Châu Âu': 'den-trang-tri.html',
+        'Đèn bàn Châu Âu': 'den-trang-tri.html',
+        'Đèn ốp Châu Âu': 'den-trang-tri.html',
     }
     for a in soup.find_all('a', href='#'):
         t = a.get_text(' ', strip=True)
         if a.find_parent(class_='blog-post') or a.find_parent(class_='image-cover'):
-            a['href'] = 'news.html'
+            a['href'] = 'category/tin-tuc-cavani.html'
         elif t == 'Possoni – Ý':
-            a['href'] = 'about.html'
+            a['href'] = 've-chung-toi.html'
         elif t in footer_map:
             a['href'] = footer_map[t]
         elif t == 'Đăng nhập':
-            a['href'] = 'contact.html'
+            a['href'] = 'lien-he.html'
     for img in soup.find_all('img'):
         src = img.get('src') or ''
         if 'nguyenhung.net' in src:
             img['src'] = 'assets/img/icon-call-nh.png'
 
+NAV_TARGETS = {
+    'index.html': '/',
+    'den-trang-tri.html': '/den-trang-tri/',
+    'den-chieu-sang.html': '/den-chieu-sang/',
+    'luxury-decor.html': '/luxury-decor/',
+    'den-chum-hien-dai.html': '/den-trang-tri/',
+    'den-chum-pha-le.html': '/den-trang-tri/',
+    'den-chum-co-dien.html': '/den-trang-tri/',
+    'thiet-ke-den-trang-tri.html': '/thiet-ke-den-trang-tri/',
+    'thiet-ke-chieu-sang.html': '/thiet-ke-chieu-sang/',
+    'thiet-ke-doc-ban.html': '/thiet-ke-doc-ban/',
+    'du-an-tieu-bieu.html': '/du-an-tieu-bieu/',
+    'category/tin-tuc-cavani.html': '/category/tin-tuc-cavani/',
+    'thanh-toan-va-bao-hanh.html': '/thanh-toan-va-bao-hanh/',
+    've-chung-toi.html': '/ve-chung-toi/',
+    'lien-he.html': '/lien-he/',
+}
+
+NAV_ACTIVE_CLASSES = {
+    'current-menu-item', 'current-menu-ancestor', 'current-menu-parent',
+    'current_page_item', 'current_page_parent', 'current_page_ancestor', 'active',
+}
+
+def _nav_norm(h):
+    if not h:
+        return ''
+    h = h.strip()
+    if h.startswith('#'):
+        return ''
+    for dom in ('https://cavani.vn', 'http://cavani.vn'):
+        if h.startswith(dom):
+            h = h[len(dom):] or '/'
+            break
+    h = h.split('#')[0].split('?')[0]
+    if not h.startswith('/'):
+        h = '/' + h.lstrip('./')
+    return h.rstrip('/') or '/'
+
+def _nav_add(li, *classes):
+    cls = li.get('class') or []
+    for c in classes:
+        if c not in cls:
+            cls.append(c)
+    li['class'] = cls
+
+def set_active_nav(soup, path):
+    """Apply the live Cavani active-menu classes for the page being written."""
+    target = NAV_TARGETS.get(path)
+    if target is None:
+        if path.startswith('category/tin-tuc-cavani'):
+            target = '/category/tin-tuc-cavani/'
+        else:
+            first = path.split('/', 1)[0]
+            if first in ('den-chum-hien-dai', 'den-chum-pha-le', 'den-chum-co-dien') and '/' in path:
+                target = '/den-trang-tri/'
+    if target:
+        target = _nav_norm(target)
+    current = '/' if path == 'index.html' else _nav_norm(path[:-5] + '/' if path.endswith('.html') else path)
+
+    for nav in (soup.select_one('#main-menu'), soup.select_one('ul.header-nav')):
+        if not nav:
+            continue
+        for li in nav.select('li'):
+            li['class'] = [c for c in (li.get('class') or []) if c not in NAV_ACTIVE_CLASSES]
+        for a in nav.select('a[aria-current]'):
+            del a['aria-current']
+        if not target:
+            continue
+        for li in nav.select('li'):
+            a = li.find('a', recursive=False)
+            if not a:
+                continue
+            if _nav_norm(a.get('href')) != target:
+                continue
+            _nav_add(li, 'active')
+            if _nav_norm(a.get('href')) == current:
+                _nav_add(li, 'current-menu-item')
+            if 'menu-item-type-post_type' in (li.get('class') or []) and _nav_norm(a.get('href')) == current:
+                _nav_add(li, 'page_item', 'current_page_item')
+            if path == 'index.html':
+                _nav_add(li, 'current_page_item')
+            if _nav_norm(a.get('href')) == current:
+                a['aria-current'] = 'page'
+            sub = li.find_parent('ul', class_='sub-menu')
+            if sub:
+                parent = sub.find_parent('li')
+                if parent:
+                    _nav_add(parent, 'current-menu-ancestor', 'current-menu-parent', 'active')
+                    pa = parent.find('a', recursive=False)
+                    if pa and _nav_norm(pa.get('href')) == current:
+                        _nav_add(parent, 'current-menu-item')
+
+    if path == 'cart.html':
+        for a in soup.select('a.header-cart-link'):
+            cls = a.get('class') or []
+            if 'active' not in cls:
+                cls.append('active')
+            a['class'] = cls
+            a['aria-current'] = 'page'
+
 def page_output(path):
     if path == 'index.html':
         return path
-    slug = os.path.splitext(os.path.basename(path))[0]
-    return os.path.join(slug, 'index.html')
+    d = os.path.dirname(path)
+    base = os.path.splitext(os.path.basename(path))[0]
+    return os.path.join(d, base, 'index.html')
 
 def write_doc(soup, path, title):
-    prefix = '' if path == 'index.html' else '../'
+    out_path = page_output(path)
+    depth = out_path.count(os.sep)
+    prefix = '../' * depth
     fix_content_links(soup)
     fix_lazy_images(soup)
     build_head(soup, title)
+    set_active_nav(soup, path)
     # remove all old script tags then append ours
     for s in soup.find_all('script'):
         s.decompose()
@@ -408,7 +542,6 @@ def write_doc(soup, path, title):
     html = soup.html
     html['class'] = ['js']
     out = '<!DOCTYPE html>\n' + str(soup)
-    out_path = page_output(path)
     os.makedirs(os.path.dirname(out_path) or '.', exist_ok=True)
     open(out_path, 'w', encoding='utf-8').write(out)
     print('wrote', out_path, len(out))
@@ -432,10 +565,12 @@ def build_home():
 
 
 # ---------------------------------------------------------------- category pages
-CATS = {
+COLLECTIONS = {
     'serip': {
-        'file': 'serip-lighting.html',
-        'title': 'SERIP LIGHTING – Đèn nghệ thuật Ý cao cấp | Cavani Lighting',
+        'file': 'den-chum-hien-dai.html',
+        'slug': 'den-chum-hien-dai',
+        'cats': ['serip'],
+        'title': 'Đèn chùm hiện đại cao cấp | Cavani Lighting',
         'name': 'SERIP LIGHTING',
         'h1': 'SERIP LIGHTING – NGHỆ THUẬT ÁNH SÁNG Ý',
         'intro': [
@@ -445,8 +580,10 @@ CATS = {
         'desc': 'SERIP Lighting – kiệt tác đèn nghệ thuật Ý, thiết kế độc bản, chế tác thủ công cho không gian thượng lưu.',
     },
     'baccarat': {
-        'file': 'baccarat-lighting.html',
-        'title': 'BACCARAT LIGHTING – Đèn chùm pha lê cao cấp | Cavani Lighting',
+        'file': 'den-chum-pha-le.html',
+        'slug': 'den-chum-pha-le',
+        'cats': ['baccarat'],
+        'title': 'Đèn chùm pha lê cao cấp | Cavani Lighting',
         'name': 'BACCARAT LIGHTING',
         'h1': 'BACCARAT LIGHTING – PHA LÊ CAO CẤP',
         'intro': [
@@ -456,8 +593,10 @@ CATS = {
         'desc': 'BACCARAT Lighting – đèn chùm pha lê cao cấp, lấp lánh và đẳng cấp cho không gian xa hoa.',
     },
     'tan-co-dien': {
-        'file': 'den-tan-co-dien.html',
-        'title': 'Đèn Tân Cổ Điển cao cấp | Cavani Lighting',
+        'file': 'den-chum-co-dien.html',
+        'slug': 'den-chum-co-dien',
+        'cats': ['tan-co-dien'],
+        'title': 'Đèn chùm cổ điển cao cấp | Cavani Lighting',
         'name': 'ĐÈN TÂN CỔ ĐIỂN',
         'h1': 'ĐÈN TÂN CỔ ĐIỂN CAO CẤP',
         'intro': [
@@ -468,12 +607,84 @@ CATS = {
     },
 }
 
+TOP_CATS = {
+    'den-trang-tri': {
+        'file': 'den-trang-tri.html',
+        'slug': 'den-trang-tri',
+        'cats': ['serip', 'baccarat', 'tan-co-dien'],
+        'title': 'Đèn trang trí cao cấp Cavani - Nơi hội tụ tinh hoa Châu Âu',
+        'name': 'ĐÈN TRANG TRÍ',
+        'h1': 'ĐÈN TRANG TRÍ CAO CẤP',
+        'intro': [
+            'Đèn trang trí không chỉ là nguồn sáng mà còn là điểm nhấn nghệ thuật, tô điểm cho không gian sống và thể hiện gu thẩm mỹ của gia chủ. Mỗi bộ sưu tập tại Cavani được tuyển chọn từ những thương hiệu đèn cao cấp nhất Châu Âu.',
+            'Từ đèn chùm cổ điển, tân cổ điển đến những thiết kế hiện đại điêu khắc ánh sáng, Cavani mang đến giải pháp hoàn thiện cho biệt thự, dinh thự, khách sạn và không gian thượng lưu.',
+        ],
+        'desc': 'Đèn trang trí cao cấp Cavani – nơi hội tụ tinh hoa đèn nghệ thuật Châu Âu.',
+    },
+    'den-chieu-sang': {
+        'file': 'den-chieu-sang.html',
+        'slug': 'den-chieu-sang',
+        'cats': ['serip'],
+        'title': 'Đèn Chiếu Sáng - Cavani.vn - Đèn Trang Trí Cao Cấp Châu Âu',
+        'name': 'ĐÈN CHIẾU SÁNG',
+        'h1': 'ĐÈN CHIẾU SÁNG CAO CẤP',
+        'intro': [
+            'Đèn chiếu sáng là yếu tố quyết định đến tính thẩm mỹ và công năng của mỗi không gian. Cavani cung cấp giải pháp chiếu sáng đồng bộ, kết hợp hài hòa giữa ánh sáng công năng và ánh sáng trang trí.',
+            'Các bộ sưu tập đèn chiếu sáng của Cavani được lựa chọn từ những thương hiệu Châu Âu, đáp ứng tiêu chuẩn khắt khe về độ bền, hiệu suất và vẻ đẹp thẩm mỹ.',
+        ],
+        'desc': 'Đèn chiếu sáng cao cấp – giải pháp ánh sáng đồng bộ cho biệt thự, khách sạn và không gian thương mại.',
+    },
+    'luxury-decor': {
+        'file': 'luxury-decor.html',
+        'slug': 'luxury-decor',
+        'cats': ['baccarat'],
+        'title': 'LUXURY DECOR - Cavani.vn - Đèn Trang Trí Cao Cấp Châu Âu',
+        'name': 'LUXURY DECOR',
+        'h1': 'LUXURY DECOR',
+        'intro': [
+            'LUXURY DECOR là bộ sưu tập dành cho những không gian cần sự sang trọng tuyệt đối. Những tác phẩm đèn pha lê, đồng mạ vàng và thủy tinh nghệ thuật được chế tác tỉ mỉ, tạo nên vẻ đẹp lấp lánh và đẳng cấp vượt thời gian.',
+            'Cavani tuyển chọn những thiết kế độc đáo từ các thương hiệu Châu Âu, mang đến điểm nhấn xa hoa cho sảnh biệt thự, phòng khách lớn, phòng tiệc và khách sạn 5 sao.',
+        ],
+        'desc': 'LUXURY DECOR – bộ sưu tập đèn trang trí xa hoa, đẳng cấp cho không gian thượng lưu.',
+    },
+}
+
+CATS = {**COLLECTIONS, **TOP_CATS}
+
 def fmt_price(n):
     return f"{int(n):,}".replace(',', '.') + '₫'
 
+def slugify(text):
+    text = text.lower().replace('đ', 'd')
+    text = unicodedata.normalize('NFD', text)
+    text = ''.join(c for c in text if unicodedata.category(c) != 'Mn')
+    text = re.sub(r'[^a-z0-9]+', '-', text).strip('-')
+    return text or 'san-pham'
+
+def prepare_products():
+    seen = set()
+    for p in PRODUCTS:
+        cfg = COLLECTIONS[p['cat']]
+        base = slugify(p['name'])
+        slug = base
+        n = 2
+        while (p['cat'], slug) in seen:
+            slug = '%s-%d' % (base, n)
+            n += 1
+        seen.add((p['cat'], slug))
+        p['slug'] = slug
+        p['catSlug'] = cfg['slug']
+        p['url'] = '/%s/%s/' % (cfg['slug'], slug)
+        p['path'] = '%s/%s.html' % (cfg['slug'], slug)
+    with open('data/products.json', 'w', encoding='utf-8') as f:
+        json.dump(PRODUCTS, f, ensure_ascii=False, indent=2)
+    with open('assets/js/products.js', 'w', encoding='utf-8') as f:
+        f.write('window.CAVANI_PRODUCTS = ' + json.dumps(PRODUCTS, ensure_ascii=False) + ';\n')
+    print('prepared', len(PRODUCTS), 'products')
+
 def product_card(p):
     pid = p['id']
-    href = f"product.html?id={pid}"
+    href = p['url']
     name = p['name'].replace('&', '&amp;')
     return f'''<div class="product-small col has-hover product type-product status-publish instock product_cat-{p['cat']} has-post-thumbnail shipping-taxable purchasable product-type-simple">
 <div class="col-inner"><div class="badge-container absolute left top z-1"></div>
@@ -490,9 +701,8 @@ def product_card(p):
 </div></div></div>'''
 
 def build_category(cat_key):
-    import json
     cfg = CATS[cat_key]
-    products = [p for p in json.load(open('data/products.json', encoding='utf-8')) if p['cat'] == cat_key]
+    products = [p for p in json.load(open('data/products.json', encoding='utf-8')) if p['cat'] in cfg['cats']]
     soup = BeautifulSoup(open('/tmp/cat.html', encoding='utf-8').read(), 'html.parser')
     if soup.body:
         soup.body['class'] = (soup.body.get('class') or []) + ['cavani-cat']
@@ -706,25 +916,100 @@ def make_header_opaque(soup):
     if hdr:
         hdr['class'] = [c for c in (hdr.get('class') or []) if c not in ('transparent', 'has-transparent')]
 
-def build_product():
-    soup = BeautifulSoup(open('/tmp/cat.html', encoding='utf-8').read(), 'html.parser')
-    strip_unwanted(soup)
-    localize(soup)
-    rewrite_internal_links(soup)
-    fix_nav(soup)
-    make_header_opaque(soup)
-    # remove category page title
-    pt = soup.select_one('.shop-page-title')
-    if pt: pt.decompose()
-    main = soup.find('main', id='main')
-    if main:
-        main.clear()
-        main['class'] = ['shop-container']
-        main.append(BeautifulSoup(PRODUCT_HTML, 'html.parser'))
-    if soup.body:
-        soup.body['class'] = [c for c in (soup.body.get('class') or []) if not c.startswith('term-')]
-        soup.body['class'] += ['single-product', 'woocommerce']
-    write_doc(soup, 'product.html', 'Sản phẩm | Cavani Lighting')
+def product_meta(p):
+    if p['cat'] == 'baccarat':
+        return ('Pha lê Baccarat, đồng mạ vàng 24K', 'Pháp / Ý', 'Ø 800 × H 700 mm (tham khảo)')
+    if p['cat'] == 'serip':
+        return ('Kim loại mạ vàng, pha lê nghệ thuật', 'Ý (Italy)', 'Ø 800 × H 700 mm (tham khảo)')
+    return ('Đồng mạ vàng, pha lê Asfour', 'Tây Ban Nha / Ý', 'Ø 800 × H 700 mm (tham khảo)')
+
+def render_product_html(p):
+    soup = BeautifulSoup(PRODUCT_HTML, 'html.parser')
+    # sidebar collections
+    menu = soup.select_one('#product-sidebar .product-categories')
+    if menu:
+        menu.clear()
+        for key, cfg in COLLECTIONS.items():
+            li = soup.new_tag('li', **{'class': 'cat-item'})
+            if key == p['cat']:
+                li['class'] = ['cat-item', 'current-cat']
+            a = soup.new_tag('a', href=cfg['file'])
+            a['data-cat'] = key
+            a.string = cfg['name']
+            li.append(a)
+            menu.append(li)
+
+    home = soup.select_one('.woocommerce-breadcrumb a')
+    if home:
+        home['href'] = 'index.html'
+    cat = soup.select_one('#pdp-cat-link')
+    if cat:
+        cat['href'] = '/' + p['catSlug'] + '/'
+        cat.string = CATS[p['cat']]['name']
+
+    material, origin, size = product_meta(p)
+    title = p['name']
+    price = fmt_price(p['price'])
+    sku = 'CV-' + re.sub(r'[^a-z0-9]', '', p['id'].lower()).upper()
+
+    img = soup.select_one('#pdp-img')
+    if img:
+        img['src'] = p['img']; img['alt'] = title
+    thumb = soup.select_one('#pdp-thumb')
+    if thumb:
+        thumb['src'] = p['img']; thumb['alt'] = title
+    img_link = soup.select_one('#pdp-img-link')
+    if img_link:
+        img_link['href'] = p['img']
+    for sel, val in [
+        ('#pdp-title', title), ('#pdp-price', price), ('#pdp-price2', price),
+        ('#pdp-sku', sku), ('#pdp-material', material), ('#pdp-size', size),
+        ('#pdp-origin', origin), ('#pdp-desc', p['desc']),
+        ('#pdp-desc-title', title.upper() + ' – BIỂU TƯỢNG SANG TRỌNG'),
+        ('#pdp-desc-long', p['desc'] + ' Sản phẩm được nhập khẩu chính hãng, bảo hành 24 tháng và được đội ngũ Cavani tư vấn lắp đặt tận nơi.'),
+        ('#pdp-attr-cat', CATS[p['cat']]['name']), ('#pdp-attr-material', material),
+        ('#pdp-attr-origin', origin),
+    ]:
+        el = soup.select_one(sel)
+        if el:
+            el.string = val
+    add = soup.select_one('#pdp-add')
+    if add:
+        add['data-product-id'] = p['id']
+    prod = soup.select_one('#product-1')
+    if prod:
+        prod['id'] = 'product-' + p['id']
+
+    rel = soup.select_one('#pdp-related')
+    if rel:
+        related = [x for x in PRODUCTS if x['cat'] == p['cat'] and x['id'] != p['id']][:4]
+        for r in related:
+            rel.append(BeautifulSoup(product_card(r), 'html.parser'))
+    return soup
+
+def build_products():
+    for p in PRODUCTS:
+        soup = BeautifulSoup(open('/tmp/cat.html', encoding='utf-8').read(), 'html.parser')
+        strip_unwanted(soup)
+        localize(soup)
+        rewrite_internal_links(soup)
+        fix_nav(soup)
+        make_header_opaque(soup)
+        pt = soup.select_one('.shop-page-title')
+        if pt:
+            pt.decompose()
+        main = soup.find('main', id='main')
+        if main:
+            main.clear()
+            main['class'] = ['shop-container']
+            main.append(render_product_html(p))
+        if soup.body:
+            keep = [c for c in (soup.body.get('class') or [])
+                    if c not in ('archive', 'tax-product_cat', 'woocommerce-page', 'cavani-cat')
+                    and not c.startswith('term-')]
+            soup.body['class'] = keep + ['single-product', 'woocommerce']
+            soup.body['data-product-id'] = p['id']
+        write_doc(soup, p['path'], p['name'] + ' | Cavani Lighting')
 
 
 # ---------------------------------------------------------------- cart page
@@ -805,73 +1090,126 @@ def build_content(filename, title, h1, subtitle, body_html, body_class=''):
     write_doc(soup, filename, title)
 
 def build_content_pages():
-    build_content('about.html', 'Về chúng tôi | Cavani Lighting', 'VỀ CHÚNG TÔI', 'CAVANI LIGHTING',
-        '<div class="two-col">'
-        '<img class="content-img" src="assets/img/POSSONI-173-1400x625.jpg" alt="Showroom Cavani"/>'
-        '<div><h2>SHOWROOM CAVANI</h2>'
-        '<p class="lead">Cavani là thương hiệu đèn trang trí Châu Âu cao cấp, mang đến không gian sống đẳng cấp với những tuyệt tác ánh sáng từ Ý, Tây Ban Nha và Pháp.</p>'
-        '<p>Chúng tôi tuyển chọn và nhập khẩu chính hãng các bộ sưu tập đèn chùm, đèn tường, đèn bàn, đèn ốp và đồ bày trí từ Possoni, BC Sanmichele, Copenlamp, Lumistar, Stillux. Mỗi sản phẩm là sự kết hợp giữa kỹ thuật chế tác thủ công, chất liệu cao cấp và gu thẩm mỹ tinh tế.</p>'
-        '<p>Với showroom tại Hà Nội và TP. Hồ Chí Minh, Cavani đồng hành cùng kiến trúc sư, chủ đầu tư và gia chủ trong việc kiến tạo những không gian sống sang trọng, tinh tế và giàu cảm xúc.</p>'
-        '<a class="btn-dark" href="contact.html">Liên hệ tư vấn</a></div></div>'
-        '<h2>Thương hiệu đồng hành</h2><div class="three-col">'
-        '<div class="info-card"><h3>Possoni – Ý</h3><p>Đèn chùm cổ điển, tân cổ điển chế tác thủ công từ đồng mạ vàng và pha lê.</p></div>'
-        '<div class="info-card"><h3>BC Sanmichele – Ý</h3><p>Đèn nghệ thuật độc bản, kết hợp kim loại và pha lê Murano.</p></div>'
-        '<div class="info-card"><h3>Copenlamp – Tây Ban Nha</h3><p>Đèn trang trí sang trọng cho biệt thự, khách sạn và dinh thự.</p></div>'
-        '<div class="info-card"><h3>Lumistar – Tây Ban Nha</h3><p>Giải pháp chiếu sáng cao cấp, tinh tế và hiện đại.</p></div>'
-        '<div class="info-card"><h3>Stillux – Ý</h3><p>Đèn thiết kế đương đại, dấu ấn nghệ thuật trong từng chi tiết.</p></div>'
-        '<div class="info-card"><h3>Cavani</h3><p>Đơn vị tư vấn, thiết kế và thi công giải pháp ánh sáng trọn gói.</p></div>'
-        '</div>')
+    build_content('ve-chung-toi.html',
+        'Showroom Cavani - Nhà phân phối các mẫu đèn trang trí Châu Âu',
+        'VỀ CHÚNG TÔI', 'CAVANI LIGHTING',
+        '''<div class="two-col">
+<img class="content-img" src="assets/img/POSSONI-173-1400x625.jpg" alt="Showroom Cavani"/>
+<div><h2>SHOWROOM CAVANI</h2>
+<p class="lead">“SHOWROOM CAVANI – Nơi hội tụ các thương hiệu đèn trang trí Châu Âu cao cấp nhất…”</p>
+<p>Cavani là thương hiệu đèn trang trí Châu Âu cao cấp, mang đến không gian sống đẳng cấp với những tuyệt tác ánh sáng từ Ý, Tây Ban Nha và Pháp.</p>
+<p>Chúng tôi tuyển chọn và nhập khẩu chính hãng các bộ sưu tập đèn chùm, đèn tường, đèn bàn, đèn ốp và đồ bày trí từ Possoni, BC Sanmichele, Stillux, L’originale, Copenlamp.</p>
+<p>Với showroom tại Hà Nội và TP. Hồ Chí Minh, Cavani đồng hành cùng kiến trúc sư, chủ đầu tư và gia chủ trong việc kiến tạo những không gian sống sang trọng, tinh tế và giàu cảm xúc.</p>
+<a class="btn-dark" href="lien-he.html">Liên hệ tư vấn</a></div></div>
+<h2>Thương hiệu đồng hành</h2><div class="three-col">
+<div class="info-card"><h3>Possoni – Ý</h3><p>Đèn chùm cổ điển, tân cổ điển chế tác thủ công từ đồng mạ vàng và pha lê.</p></div>
+<div class="info-card"><h3>BC Sanmichele – Ý</h3><p>Đèn nghệ thuật độc bản, kết hợp kim loại và pha lê Murano.</p></div>
+<div class="info-card"><h3>Stillux – Ý</h3><p>Đèn thiết kế đương đại, dấu ấn nghệ thuật trong từng chi tiết.</p></div>
+<div class="info-card"><h3>L’originale – Ý</h3><p>Bộ sưu tập đèn trang trí sang trọng, tinh tế và giàu cá tính.</p></div>
+<div class="info-card"><h3>Copenlamp – Tây Ban Nha</h3><p>Đèn trang trí cao cấp cho biệt thự, khách sạn và dinh thự.</p></div>
+<div class="info-card"><h3>Cavani</h3><p>Đơn vị tư vấn, thiết kế và thi công giải pháp ánh sáng trọn gói.</p></div>
+</div>''')
 
-    build_content('contact.html', 'Liên hệ | Cavani Lighting', 'LIÊN HỆ', 'CAVANI LIGHTING',
-        '<div class="contact-grid">'
-        '<div><h2>Showroom Hà Nội</h2><p>160 Thái Hà, Đống Đa, Hà Nội</p><p>Hotline: 0937.6688.34</p>'
-        '<h2>Showroom TP. Hồ Chí Minh</h2><p>42 Nguyễn Cơ Thạch, Khu Sala, TP. HCM</p><p>Hotline: 0937.6688.34</p>'
-        '<h2>Fanpage</h2><p>Cavani Lighting</p><p>Website: www.cavani.vn</p></div>'
-        '<div><h2>Gửi yêu cầu tư vấn</h2><form class="contact-form" onsubmit="event.preventDefault(); this.querySelector(\'button\').textContent=\'Đã gửi yêu cầu\'; this.reset();">'
-        '<input type="text" placeholder="Họ và tên" required/>'
-        '<input type="email" placeholder="Email" required/>'
-        '<input type="tel" placeholder="Số điện thoại"/>'
-        '<textarea placeholder="Nội dung cần tư vấn"></textarea>'
-        '<button type="submit">Gửi yêu cầu</button></form></div></div>')
+    build_content('lien-he.html',
+        'LIÊN HỆ - Cavani.vn - Đèn Trang Trí Cao Cấp Châu Âu',
+        'LIÊN HỆ', 'CAVANI LIGHTING',
+        '''<div class="contact-grid">
+<div><h2>Showroom Hà Nội</h2><p>160 Thái Hà, Trung Liệt, Đống Đa, Hà Nội</p><p>Hotline: 0937.6688.34</p>
+<h2>Showroom TP. Hồ Chí Minh</h2><p>42 Nguyễn Cơ Thạch, Khu Sala, TP. HCM</p><p>Hotline: 0909.487.637</p>
+<h2>Liên hệ khác</h2><p>Email: info@cavani.vn</p><p>Fanpage: Cavani Lighting</p><p>Website: www.cavani.vn</p></div>
+<div><h2>Gửi yêu cầu tư vấn</h2><form class="contact-form" onsubmit="event.preventDefault(); this.querySelector('button').textContent='Đã gửi yêu cầu'; this.reset();">
+<input type="text" placeholder="Họ và tên" required/>
+<input type="email" placeholder="Email" required/>
+<input type="tel" placeholder="Số điện thoại"/>
+<textarea placeholder="Nội dung cần tư vấn"></textarea>
+<button type="submit">Gửi yêu cầu</button></form></div></div>''')
 
-    build_content('projects.html', 'Dự án tiêu biểu | Cavani Lighting', 'DỰ ÁN TIÊU BIỂU', 'CAVANI LIGHTING',
-        '<p class="lead" style="text-align:center;max-width:760px;margin:0 auto 34px;">Mỗi công trình là một câu chuyện ánh sáng riêng – nơi Cavani đồng hành cùng kiến trúc sư và chủ đầu tư để kiến tạo không gian sống đẳng cấp.</p>'
-        '<div class="project-grid">'
-        '<a class="project-card" href="projects.html"><img src="assets/img/z4437276384749_7c9ecad410ebf3242be1b05d5f70edf9.jpg" alt="Dự án biệt thự"/><div class="caption">Biệt thự tân cổ điển – Hà Nội</div></a>'
-        '<a class="project-card" href="projects.html"><img src="assets/img/Du-an-den-bespoke-nghe-thuat-anh-dai-dien-scaled.jpg" alt="Dự án bespoke"/><div class="caption">Đèn bespoke nghệ thuật</div></a>'
-        '<a class="project-card" href="projects.html"><img src="assets/img/CONG-TRINH-CHI-HIEP-2-scaled.jpg" alt="Công trình chị Hiệp"/><div class="caption">Công trình chị Hiệp</div></a>'
-        '<a class="project-card" href="projects.html"><img src="assets/img/CL1-scaled.jpg" alt="Dự án CL1"/><div class="caption">Biệt thự CL1</div></a>'
-        '<a class="project-card" href="projects.html"><img src="assets/img/CONG-TRINH-ANH-TOAN-1-scaled.jpg" alt="Công trình anh Toàn"/><div class="caption">Công trình anh Toàn</div></a>'
-        '<a class="project-card" href="projects.html"><img src="assets/img/CONG-TRINH-CHI-NGUYET0-scaled.jpg" alt="Công trình chị Nguyệt"/><div class="caption">Công trình chị Nguyệt</div></a>'
-        '</div>')
+    build_content('du-an-tieu-bieu.html',
+        'DỰ ÁN TIÊU BIỂU - Cavani.vn - Đèn Trang Trí Cao Cấp Châu Âu',
+        'DỰ ÁN TIÊU BIỂU', 'CAVANI LIGHTING',
+        '''<p class="lead" style="text-align:center;max-width:760px;margin:0 auto 34px;">Mỗi công trình là một câu chuyện ánh sáng riêng – nơi Cavani đồng hành cùng kiến trúc sư và chủ đầu tư để kiến tạo không gian sống đẳng cấp.</p>
+<h2 style="text-align:center;">DỰ ÁN ĐÃ THỰC HIỆN</h2>
+<div class="project-grid">
+<a class="project-card" href="du-an-tieu-bieu.html"><img src="assets/img/z4437276384749_7c9ecad410ebf3242be1b05d5f70edf9.jpg" alt="Dự án biệt thự"/><div class="caption">Biệt thự tân cổ điển – Hà Nội<br/><small>Thời gian lắp: 2026 · Địa chỉ: Hà Nội</small></div></a>
+<a class="project-card" href="du-an-tieu-bieu.html"><img src="assets/img/Du-an-den-bespoke-nghe-thuat-anh-dai-dien-scaled.jpg" alt="Dự án bespoke"/><div class="caption">Đèn bespoke nghệ thuật<br/><small>Thời gian lắp: 2026 · Địa chỉ: Quảng Ninh</small></div></a>
+<a class="project-card" href="du-an-tieu-bieu.html"><img src="assets/img/CONG-TRINH-CHI-HIEP-2-scaled.jpg" alt="Công trình chị Hiệp"/><div class="caption">Công trình chị Hiệp<br/><small>Thời gian lắp: 2025 · Địa chỉ: TP.HCM</small></div></a>
+<a class="project-card" href="du-an-tieu-bieu.html"><img src="assets/img/CL1-scaled.jpg" alt="Dự án CL1"/><div class="caption">Biệt thự CL1<br/><small>Thời gian lắp: 2025 · Địa chỉ: Hà Nội</small></div></a>
+<a class="project-card" href="du-an-tieu-bieu.html"><img src="assets/img/CONG-TRINH-ANH-TOAN-1-scaled.jpg" alt="Công trình anh Toàn"/><div class="caption">Công trình anh Toàn<br/><small>Thời gian lắp: 2026 · Địa chỉ: Quảng Ninh</small></div></a>
+<a class="project-card" href="du-an-tieu-bieu.html"><img src="assets/img/CONG-TRINH-CHI-NGUYET0-scaled.jpg" alt="Công trình chị Nguyệt"/><div class="caption">Công trình chị Nguyệt<br/><small>Thời gian lắp: 2025 · Địa chỉ: TP.HCM</small></div></a>
+</div>''')
 
-    build_content('news.html', 'Tin tức | Cavani Lighting', 'TIN TỨC', 'CẨM NANG ÁNH SÁNG',
-        '<p class="lead" style="text-align:center;max-width:760px;margin:0 auto 34px;">Cẩm nang đèn chùm Châu Âu – kiến thức, xu hướng và kinh nghiệm chọn đèn cho không gian sống thượng lưu.</p>'
-        '<div class="news-grid">'
-        '<a class="news-card" href="news.html"><img src="assets/img/Den-chum-co-dien-Possoni-096-12-6-3-662x400.jpg" alt="Đèn chùm cổ điển Possoni"/><h3>Đèn chùm cổ điển Possoni – biểu tượng của sự sang trọng</h3><p>Khám phá vẻ đẹp vượt thời gian của đèn chùm Possoni trong không gian biệt thự.</p></a>'
-        '<a class="news-card" href="news.html"><img src="assets/img/211-618x400.jpg" alt="Đèn chùm pha lê"/><h3>Bí quyết chọn đèn chùm pha lê cho phòng khách</h3><p>Kích thước, chất liệu và ánh sáng – ba yếu tố quyết định vẻ đẹp của đèn chùm.</p></a>'
-        '<a class="news-card" href="news.html"><img src="assets/img/PHUONG-AN-DEN-TRANG-TRI-MRS-CHI-BAC-GIANG-4-566x400.jpg" alt="Phương án đèn trang trí"/><h3>Phương án đèn trang trí cho không gian tân cổ điển</h3><p>Gợi ý bố trí ánh sáng cho biệt thự và dinh thự theo phong cách Châu Âu.</p></a>'
-        '<a class="news-card" href="news.html"><img src="assets/img/THE-NAO-LA-DEN-CHUM-CAO-CAP-scaled.jpg" alt="Đèn chùm cao cấp"/><h3>Thế nào là một chiếc đèn chùm cao cấp?</h3><p>Phân biệt đèn chùm cao cấp và đèn trang trí thông thường qua chất liệu, chế tác.</p></a>'
-        '<a class="news-card" href="news.html"><img src="assets/img/Thuong-hieu-den-trang-tri-cao-cap-Y-Stillux-3.jpg" alt="Stillux"/><h3>Stillux – dấu ấn đèn thiết kế Ý</h3><p>Thương hiệu đèn nghệ thuật được các kiến trúc sư hàng đầu lựa chọn.</p></a>'
-        '<a class="news-card" href="news.html"><img src="assets/img/BC-Sanmichele-Den-trang-tri-nghe-thuat-doc-ban.jpg" alt="BC Sanmichele"/><h3>BC Sanmichele – nghệ thuật độc bản</h3><p>Những tác phẩm đèn thủ công mang đậm tinh thần nghệ thuật nước Ý.</p></a>'
-        '</div>')
+    build_content('category/tin-tuc-cavani.html',
+        'Tin tức đèn chùm cao cấp Châu Âu Cavani | Xu hướng & tư vấn',
+        'TIN TỨC', 'CẨM NANG ÁNH SÁNG',
+        '''<p class="lead" style="text-align:center;max-width:760px;margin:0 auto 34px;">Cẩm nang đèn chùm Châu Âu – kiến thức, xu hướng và kinh nghiệm chọn đèn cho không gian sống thượng lưu.</p>
+<div class="news-grid">
+<a class="news-card" href="category/tin-tuc-cavani.html"><img src="assets/img/Den-chum-co-dien-Possoni-096-12-6-3-662x400.jpg" alt="Đèn chùm cổ điển Possoni"/><h3>Đèn chùm cổ điển Possoni – biểu tượng của sự sang trọng</h3><p>Khám phá vẻ đẹp vượt thời gian của đèn chùm Possoni trong không gian biệt thự.</p></a>
+<a class="news-card" href="category/tin-tuc-cavani.html"><img src="assets/img/211-618x400.jpg" alt="Đèn chùm pha lê"/><h3>Bí quyết chọn đèn chùm pha lê cho phòng khách</h3><p>Kích thước, chất liệu và ánh sáng – ba yếu tố quyết định vẻ đẹp của đèn chùm.</p></a>
+<a class="news-card" href="category/tin-tuc-cavani.html"><img src="assets/img/PHUONG-AN-DEN-TRANG-TRI-MRS-CHI-BAC-GIANG-4-566x400.jpg" alt="Phương án đèn trang trí"/><h3>Phương án đèn trang trí cho không gian tân cổ điển</h3><p>Gợi ý bố trí ánh sáng cho biệt thự và dinh thự theo phong cách Châu Âu.</p></a>
+<a class="news-card" href="category/tin-tuc-cavani.html"><img src="assets/img/THE-NAO-LA-DEN-CHUM-CAO-CAP-scaled.jpg" alt="Đèn chùm cao cấp"/><h3>Thế nào là một chiếc đèn chùm cao cấp?</h3><p>Phân biệt đèn chùm cao cấp và đèn trang trí thông thường qua chất liệu, chế tác.</p></a>
+<a class="news-card" href="category/tin-tuc-cavani.html"><img src="assets/img/Thuong-hieu-den-trang-tri-cao-cap-Y-Stillux-3.jpg" alt="Stillux"/><h3>Stillux – dấu ấn đèn thiết kế Ý</h3><p>Thương hiệu đèn nghệ thuật được các kiến trúc sư hàng đầu lựa chọn.</p></a>
+<a class="news-card" href="category/tin-tuc-cavani.html"><img src="assets/img/BC-Sanmichele-Den-trang-tri-nghe-thuat-doc-ban.jpg" alt="BC Sanmichele"/><h3>BC Sanmichele – nghệ thuật độc bản</h3><p>Những tác phẩm đèn thủ công mang đậm tinh thần nghệ thuật nước Ý.</p></a>
+</div>''')
 
-    build_content('services.html', 'Dịch vụ | Cavani Lighting', 'DỊCH VỤ', 'CAVANI LIGHTING',
-        '<div class="three-col">'
-        '<div class="info-card"><h3>Thiết kế đèn trang trí</h3><p>Tư vấn và thiết kế giải pháp đèn trang trí phù hợp kiến trúc, phong cách và công năng từng không gian.</p><a class="btn-dark" href="contact.html">Tư vấn</a></div>'
-        '<div class="info-card"><h3>Thiết kế chiếu sáng</h3><p>Quy hoạch ánh sáng tổng thể cho biệt thự, khách sạn, showroom với tiêu chuẩn Châu Âu.</p><a class="btn-dark" href="contact.html">Tư vấn</a></div>'
-        '<div class="info-card"><h3>Thiết kế độc bản</h3><p>Chế tác đèn bespoke theo yêu cầu, cá nhân hóa từ chất liệu, kích thước đến chi tiết hoàn thiện.</p><a class="btn-dark" href="contact.html">Tư vấn</a></div>'
-        '</div>'
-        '<div class="two-col" style="margin-top:40px;">'
-        '<img class="content-img" src="assets/img/kts5.jpg" alt="Không gian đèn Cavani"/>'
-        '<div><h2>Giải pháp ánh sáng trọn gói</h2><p>Từ khảo sát, tư vấn, thiết kế đến thi công và bảo hành – Cavani mang đến quy trình chuyên nghiệp, đồng bộ cho mọi công trình.</p>'
-        '<p>Đội ngũ chuyên gia của chúng tôi làm việc trực tiếp với kiến trúc sư, nhà thầu và gia chủ để đảm bảo từng chi tiết ánh sáng hài hòa với tổng thể kiến trúc.</p>'
-        '<a class="btn-dark" href="contact.html">Đặt lịch tư vấn</a></div></div>')
+    build_content('thanh-toan-va-bao-hanh.html',
+        'THANH TOÁN VÀ BẢO HÀNH - Cavani.vn - Đèn Trang Trí Cao Cấp Châu Âu',
+        'THANH TOÁN VÀ BẢO HÀNH', 'CAM KẾT CAVANI',
+        '''<p class="lead" style="text-align:center;max-width:820px;margin:0 auto 34px;">Cavani cam kết mang đến sản phẩm chính hãng, dịch vụ hậu mãi tận tâm và chính sách bảo hành minh bạch cho mọi công trình.</p>
+<div class="three-col">
+<div class="info-card"><h3>Bồi thường gấp 10 lần</h3><p>Nếu phát hiện sai xuất xứ, Cavani bồi thường gấp 10 lần giá trị sản phẩm.</p></div>
+<div class="info-card"><h3>Đổi sản phẩm khác</h3><p>Hỗ trợ đổi sang sản phẩm khác phù hợp với nhu cầu và không gian thực tế.</p></div>
+<div class="info-card"><h3>Vệ sinh định kỳ</h3><p>Vệ sinh đèn 1 lần/năm, miễn phí trong năm đầu tiên.</p></div>
+<div class="info-card"><h3>Bảo hành 5 năm</h3><p>Đèn trang trí Châu Âu được bảo hành đến 5 năm tùy từng sản phẩm.</p></div>
+<div class="info-card"><h3>Bảo trì trọn đời</h3><p>Dịch vụ bảo trì trọn đời có phí, giúp đèn luôn sáng đẹp theo thời gian.</p></div>
+<div class="info-card"><h3>Đèn ngoài trời</h3><p>Bảo hành 12–24 tháng cho đèn ngoài trời và đèn chiếu sáng.</p></div>
+</div>
+<div class="two-col" style="margin-top:40px;">
+<img class="content-img" src="assets/img/kts5.jpg" alt="Bảo hành Cavani"/>
+<div><h2>Thời gian bảo hành</h2><p>Thời gian bảo hành được tính từ ngày giao nhận sản phẩm. Quý khách vui lòng giữ phiếu bảo hành và hóa đơn để được hỗ trợ nhanh chóng.</p><p>Mọi thắc mắc về thanh toán và bảo hành, vui lòng liên hệ hotline <strong>0937.6688.34</strong>.</p><a class="btn-dark" href="lien-he.html">Liên hệ ngay</a></div></div>''')
 
+    build_content('thiet-ke-den-trang-tri.html',
+        'THIẾT KẾ ĐÈN TRANG TRÍ - Cavani.vn - Đèn Trang Trí Cao Cấp Châu Âu',
+        'THIẾT KẾ ĐÈN TRANG TRÍ', 'CAVANI LIGHTING',
+        '''<div class="two-col"><img class="content-img" src="assets/img/kts5.jpg" alt="Thiết kế đèn trang trí"/>
+<div><h2>Đèn trang trí tô điểm không gian</h2><p class="lead">Một không gian đẹp không thể thiếu ánh sáng được thiết kế có chủ đích. Đèn trang trí không chỉ chiếu sáng mà còn tạo điểm nhấn, dẫn dắt ánh nhìn và thể hiện gu thẩm mỹ của gia chủ.</p>
+<p>Cavani tư vấn lựa chọn đèn phù hợp với chiều cao trần, diện tích, phong cách nội thất và công năng từng khu vực. Đội ngũ chuyên gia sử dụng phần mềm chuyên dụng để tính toán kích thước, kiểu dáng và bố trí đèn trong phối cảnh 3D.</p>
+<a class="btn-dark" href="lien-he.html">Đặt lịch tư vấn</a></div></div>
+<h2>Phong cách thiết kế</h2><div class="three-col">
+<div class="info-card"><h3>Cổ điển</h3><p>Đèn chùm đồng mạ vàng, pha lê cắt giác, hoa văn cầu kỳ – phù hợp biệt thự, dinh thự.</p></div>
+<div class="info-card"><h3>Tân cổ điển</h3><p>Đường nét mềm mại, tỷ lệ cân đối, sang trọng mà không nặng nề.</p></div>
+<div class="info-card"><h3>Hiện đại</h3><p>Hình khối tối giản, chất liệu kim loại và pha lê trong suốt, phù hợp penthouse, showroom.</p></div>
+</div>''')
+
+    build_content('thiet-ke-chieu-sang.html',
+        'THIẾT KẾ CHIẾU SÁNG - Cavani.vn - Đèn Trang Trí Cao Cấp Châu Âu',
+        'THIẾT KẾ CHIẾU SÁNG', 'CAVANI LIGHTING',
+        '''<p class="lead" style="text-align:center;max-width:820px;margin:0 auto 34px;">“Thiết Kế Chiếu Sáng – Ánh sáng là một trong những yếu tố quyết định đến tính thẩm mỹ và ý nghĩa của không gian sống…”</p>
+<div class="two-col">
+<div><h2>Chiếu sáng công năng</h2><p>Đảm bảo độ rọi, nhiệt độ màu và chỉ số hoàn màu theo tiêu chuẩn quốc tế cho từng khu vực: phòng khách, phòng ăn, phòng ngủ, bếp, hành lang và không gian ngoài trời.</p><p>Cavani sử dụng các phần mềm tính toán chiếu sáng chuyên dụng như Coohom, Dialux và Relux để mô phỏng và tối ưu phương án.</p></div>
+<div><h2>Chiếu sáng thẩm mĩ</h2><p>Ánh sáng là ngôn ngữ định hình không gian, tôn vinh nội thất và kiến trúc. Chúng tôi kết hợp đèn chùm, đèn tường, đèn âm trần và đèn trang trí để tạo lớp lang ánh sáng giàu cảm xúc.</p><p>Mỗi phương án đều được cá nhân hóa theo phong cách sống và gu thẩm mỹ của gia chủ.</p></div></div>
+<div style="text-align:center;margin-top:34px;"><a class="btn-dark" href="lien-he.html">Nhận tư vấn chiếu sáng</a></div>''')
+
+    build_content('thiet-ke-doc-ban.html',
+        'THIẾT KẾ ĐỘC BẢN - Cavani.vn - Đèn Trang Trí Cao Cấp Châu Âu',
+        'THIẾT KẾ ĐỘC BẢN', 'CAVANI LIGHTING',
+        '''<div class="two-col"><img class="content-img" src="assets/img/Du-an-den-bespoke-nghe-thuat-anh-dai-dien-scaled.jpg" alt="Thiết kế độc bản"/>
+<div><h2>Dấu ấn riêng cho không gian</h2><p class="lead">Bạn muốn một mẫu đèn độc đáo, cá tính và không trùng lặp? Cavani nhận thiết kế và chế tác đèn bespoke theo yêu cầu riêng.</p>
+<p>Quy trình bắt đầu từ phác thảo theo sở thích, sau đó hoàn thiện bởi đội ngũ Cavani và các chuyên gia Châu Âu. Mỗi chi tiết kích thước, kiểu dáng, hạt pha lê và số bóng đều được tính toán để phù hợp với không gian thực tế.</p>
+<p>Hotline tư vấn: <strong>0937.6688.34</strong></p><a class="btn-dark" href="lien-he.html">Bắt đầu thiết kế</a></div></div>
+<h2>Quy trình thiết kế độc bản</h2><div class="three-col">
+<div class="info-card"><h3>01. Lắng nghe</h3><p>Khảo sát không gian, phong cách và mong muốn của gia chủ.</p></div>
+<div class="info-card"><h3>02. Phác thảo</h3><p>Phác thảo ý tưởng, lựa chọn chất liệu, kích thước và ánh sáng.</p></div>
+<div class="info-card"><h3>03. Chế tác</h3><p>Hoàn thiện bởi đội ngũ Cavani và chuyên gia Châu Âu, lắp đặt tận nơi.</p></div>
+</div>''')
 LEGACY_PAGES = [
     'serip-lighting.html', 'baccarat-lighting.html', 'den-tan-co-dien.html',
     'product.html', 'cart.html', 'about.html', 'contact.html',
     'projects.html', 'news.html', 'services.html',
+]
+
+LEGACY_DIRS = [
+    'product', 'about', 'contact', 'projects', 'news', 'services',
+    'serip-lighting', 'baccarat-lighting', 'den-tan-co-dien',
 ]
 
 def cleanup_legacy_pages():
@@ -879,12 +1217,17 @@ def cleanup_legacy_pages():
         if os.path.exists(name):
             os.remove(name)
             print('removed legacy', name)
+    for name in LEGACY_DIRS:
+        if os.path.isdir(name):
+            shutil.rmtree(name)
+            print('removed legacy dir', name)
 
 if __name__ == '__main__':
+    prepare_products()
     build_home()
     for _cat in CATS:
         build_category(_cat)
-    build_product()
+    build_products()
     build_cart()
     build_content_pages()
     cleanup_legacy_pages()
