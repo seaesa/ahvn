@@ -503,6 +503,8 @@ def set_active_nav(soup, path):
         if not target:
             continue
         for li in nav.select('li'):
+            if 'account-item' in (li.get('class') or []):
+                continue
             a = li.find('a', recursive=False)
             if not a:
                 continue
@@ -1089,136 +1091,71 @@ def build_cart():
 
 
 # ---------------------------------------------------------------- content pages
-def build_content(filename, title, h1, subtitle, body_html, body_class=''):
+def build_live_content(filename, title, live_path, remove_selectors=()):
+    """Rebuild a content page from the captured live page so the section
+    structure, spacing and inline styles match cavani.vn exactly."""
     soup = BeautifulSoup(open('/tmp/cat.html', encoding='utf-8').read(), 'html.parser')
     strip_unwanted(soup); localize(soup); rewrite_internal_links(soup); fix_nav(soup)
     make_header_opaque(soup)
     pt = soup.select_one('.shop-page-title')
     if pt: pt.decompose()
+
+    live = BeautifulSoup(open(live_path, encoding='utf-8').read(), 'html.parser')
+    strip_unwanted(live); localize(live); rewrite_internal_links(live); fix_lazy_images(live)
+    for sel in remove_selectors:
+        for el in live.select(sel):
+            el.decompose()
+
+    src_main = live.find('main', id='main')
+    content = src_main.find(id='content') if src_main else None
+    if content is None and src_main:
+        content = src_main.find(recursive=False)
+
     main = soup.find('main', id='main')
     if main:
-        main.clear(); main['class'] = ['shop-container']
-        main.append(BeautifulSoup(
-            '<div class="cavani-page"><div class="container">'
-            '<div class="page-hero"><div class="subtitle">' + subtitle + '</div><h1>' + h1 + '</h1></div>'
-            + body_html + '</div></div>', 'html.parser'))
-    if soup.body:
-        soup.body['class'] = [c for c in (soup.body.get('class') or []) if not c.startswith('term-')]
-        if body_class: soup.body['class'] += [body_class]
+        main.clear()
+        main['class'] = []
+        if content is not None:
+            main.append(copy.deepcopy(content))
+    if soup.body and live.body:
+        soup.body['class'] = [c for c in (live.body.get('class') or []) if c != 'woocommerce-js']
     write_doc(soup, filename, title)
 
+
 def build_content_pages():
-    build_content('ve-chung-toi.html',
+    build_live_content(
+        've-chung-toi.html',
         'Showroom Cavani - Nhà phân phối các mẫu đèn trang trí Châu Âu',
-        'VỀ CHÚNG TÔI', 'CAVANI LIGHTING',
-        '''<div class="two-col">
-<img class="content-img" src="assets/img/POSSONI-173-1400x625.jpg" alt="Showroom Cavani"/>
-<div><h2>SHOWROOM CAVANI</h2>
-<p class="lead">“SHOWROOM CAVANI – Nơi hội tụ các thương hiệu đèn trang trí Châu Âu cao cấp nhất…”</p>
-<p>Cavani là thương hiệu đèn trang trí Châu Âu cao cấp, mang đến không gian sống đẳng cấp với những tuyệt tác ánh sáng từ Ý, Tây Ban Nha và Pháp.</p>
-<p>Chúng tôi tuyển chọn và nhập khẩu chính hãng các bộ sưu tập đèn chùm, đèn tường, đèn bàn, đèn ốp và đồ bày trí từ Possoni, BC Sanmichele, Stillux, L’originale, Copenlamp.</p>
-<p>Với showroom tại Hà Nội và TP. Hồ Chí Minh, Cavani đồng hành cùng kiến trúc sư, chủ đầu tư và gia chủ trong việc kiến tạo những không gian sống sang trọng, tinh tế và giàu cảm xúc.</p>
-<a class="btn-dark" href="lien-he.html">Liên hệ tư vấn</a></div></div>
-<h2>Thương hiệu đồng hành</h2><div class="three-col">
-<div class="info-card"><h3>Possoni – Ý</h3><p>Đèn chùm cổ điển, tân cổ điển chế tác thủ công từ đồng mạ vàng và pha lê.</p></div>
-<div class="info-card"><h3>BC Sanmichele – Ý</h3><p>Đèn nghệ thuật độc bản, kết hợp kim loại và pha lê Murano.</p></div>
-<div class="info-card"><h3>Stillux – Ý</h3><p>Đèn thiết kế đương đại, dấu ấn nghệ thuật trong từng chi tiết.</p></div>
-<div class="info-card"><h3>L’originale – Ý</h3><p>Bộ sưu tập đèn trang trí sang trọng, tinh tế và giàu cá tính.</p></div>
-<div class="info-card"><h3>Copenlamp – Tây Ban Nha</h3><p>Đèn trang trí cao cấp cho biệt thự, khách sạn và dinh thự.</p></div>
-<div class="info-card"><h3>Cavani</h3><p>Đơn vị tư vấn, thiết kế và thi công giải pháp ánh sáng trọn gói.</p></div>
-</div>''')
-
-    build_content('lien-he.html',
+        '/tmp/live-ve-chung-toi.html')
+    build_live_content(
+        'lien-he.html',
         'LIÊN HỆ - Cavani.vn - Đèn Trang Trí Cao Cấp Châu Âu',
-        'LIÊN HỆ', 'CAVANI LIGHTING',
-        '''<div class="contact-grid">
-<div><h2>Showroom Hà Nội</h2><p>160 Thái Hà, Trung Liệt, Đống Đa, Hà Nội</p><p>Hotline: 0937.6688.34</p>
-<h2>Showroom TP. Hồ Chí Minh</h2><p>42 Nguyễn Cơ Thạch, Khu Sala, TP. HCM</p><p>Hotline: 0909.487.637</p>
-<h2>Liên hệ khác</h2><p>Email: info@cavani.vn</p><p>Fanpage: Cavani Lighting</p><p>Website: www.cavani.vn</p></div>
-<div><h2>Gửi yêu cầu tư vấn</h2><form class="contact-form" onsubmit="event.preventDefault(); this.querySelector('button').textContent='Đã gửi yêu cầu'; this.reset();">
-<input type="text" placeholder="Họ và tên" required/>
-<input type="email" placeholder="Email" required/>
-<input type="tel" placeholder="Số điện thoại"/>
-<textarea placeholder="Nội dung cần tư vấn"></textarea>
-<button type="submit">Gửi yêu cầu</button></form></div></div>''')
-
-    build_content('du-an-tieu-bieu.html',
+        '/tmp/live-lien-he.html')
+    build_live_content(
+        'du-an-tieu-bieu.html',
         'DỰ ÁN TIÊU BIỂU - Cavani.vn - Đèn Trang Trí Cao Cấp Châu Âu',
-        'DỰ ÁN TIÊU BIỂU', 'CAVANI LIGHTING',
-        '''<p class="lead" style="text-align:center;max-width:760px;margin:0 auto 34px;">Mỗi công trình là một câu chuyện ánh sáng riêng – nơi Cavani đồng hành cùng kiến trúc sư và chủ đầu tư để kiến tạo không gian sống đẳng cấp.</p>
-<h2 style="text-align:center;">DỰ ÁN ĐÃ THỰC HIỆN</h2>
-<div class="project-grid">
-<a class="project-card" href="du-an-tieu-bieu.html"><img src="assets/img/z4437276384749_7c9ecad410ebf3242be1b05d5f70edf9.jpg" alt="Dự án biệt thự"/><div class="caption">Biệt thự tân cổ điển – Hà Nội<br/><small>Thời gian lắp: 2026 · Địa chỉ: Hà Nội</small></div></a>
-<a class="project-card" href="du-an-tieu-bieu.html"><img src="assets/img/Du-an-den-bespoke-nghe-thuat-anh-dai-dien-scaled.jpg" alt="Dự án bespoke"/><div class="caption">Đèn bespoke nghệ thuật<br/><small>Thời gian lắp: 2026 · Địa chỉ: Quảng Ninh</small></div></a>
-<a class="project-card" href="du-an-tieu-bieu.html"><img src="assets/img/CONG-TRINH-CHI-HIEP-2-scaled.jpg" alt="Công trình chị Hiệp"/><div class="caption">Công trình chị Hiệp<br/><small>Thời gian lắp: 2025 · Địa chỉ: TP.HCM</small></div></a>
-<a class="project-card" href="du-an-tieu-bieu.html"><img src="assets/img/CL1-scaled.jpg" alt="Dự án CL1"/><div class="caption">Biệt thự CL1<br/><small>Thời gian lắp: 2025 · Địa chỉ: Hà Nội</small></div></a>
-<a class="project-card" href="du-an-tieu-bieu.html"><img src="assets/img/CONG-TRINH-ANH-TOAN-1-scaled.jpg" alt="Công trình anh Toàn"/><div class="caption">Công trình anh Toàn<br/><small>Thời gian lắp: 2026 · Địa chỉ: Quảng Ninh</small></div></a>
-<a class="project-card" href="du-an-tieu-bieu.html"><img src="assets/img/CONG-TRINH-CHI-NGUYET0-scaled.jpg" alt="Công trình chị Nguyệt"/><div class="caption">Công trình chị Nguyệt<br/><small>Thời gian lắp: 2025 · Địa chỉ: TP.HCM</small></div></a>
-</div>''')
-
-    build_content('category/tin-tuc-cavani.html',
+        '/tmp/live-du-an-tieu-bieu.html')
+    build_live_content(
+        'category/tin-tuc-cavani.html',
         'Tin tức đèn chùm cao cấp Châu Âu Cavani | Xu hướng & tư vấn',
-        'TIN TỨC', 'CẨM NANG ÁNH SÁNG',
-        '''<p class="lead" style="text-align:center;max-width:760px;margin:0 auto 34px;">Cẩm nang đèn chùm Châu Âu – kiến thức, xu hướng và kinh nghiệm chọn đèn cho không gian sống thượng lưu.</p>
-<div class="news-grid">
-<a class="news-card" href="category/tin-tuc-cavani.html"><img src="assets/img/Den-chum-co-dien-Possoni-096-12-6-3-662x400.jpg" alt="Đèn chùm cổ điển Possoni"/><h3>Đèn chùm cổ điển Possoni – biểu tượng của sự sang trọng</h3><p>Khám phá vẻ đẹp vượt thời gian của đèn chùm Possoni trong không gian biệt thự.</p></a>
-<a class="news-card" href="category/tin-tuc-cavani.html"><img src="assets/img/211-618x400.jpg" alt="Đèn chùm pha lê"/><h3>Bí quyết chọn đèn chùm pha lê cho phòng khách</h3><p>Kích thước, chất liệu và ánh sáng – ba yếu tố quyết định vẻ đẹp của đèn chùm.</p></a>
-<a class="news-card" href="category/tin-tuc-cavani.html"><img src="assets/img/PHUONG-AN-DEN-TRANG-TRI-MRS-CHI-BAC-GIANG-4-566x400.jpg" alt="Phương án đèn trang trí"/><h3>Phương án đèn trang trí cho không gian tân cổ điển</h3><p>Gợi ý bố trí ánh sáng cho biệt thự và dinh thự theo phong cách Châu Âu.</p></a>
-<a class="news-card" href="category/tin-tuc-cavani.html"><img src="assets/img/THE-NAO-LA-DEN-CHUM-CAO-CAP-scaled.jpg" alt="Đèn chùm cao cấp"/><h3>Thế nào là một chiếc đèn chùm cao cấp?</h3><p>Phân biệt đèn chùm cao cấp và đèn trang trí thông thường qua chất liệu, chế tác.</p></a>
-<a class="news-card" href="category/tin-tuc-cavani.html"><img src="assets/img/Thuong-hieu-den-trang-tri-cao-cap-Y-Stillux-3.jpg" alt="Stillux"/><h3>Stillux – dấu ấn đèn thiết kế Ý</h3><p>Thương hiệu đèn nghệ thuật được các kiến trúc sư hàng đầu lựa chọn.</p></a>
-<a class="news-card" href="category/tin-tuc-cavani.html"><img src="assets/img/BC-Sanmichele-Den-trang-tri-nghe-thuat-doc-ban.jpg" alt="BC Sanmichele"/><h3>BC Sanmichele – nghệ thuật độc bản</h3><p>Những tác phẩm đèn thủ công mang đậm tinh thần nghệ thuật nước Ý.</p></a>
-</div>''')
-
-    build_content('thanh-toan-va-bao-hanh.html',
+        '/tmp/live-category-tin-tuc-cavani.html')
+    build_live_content(
+        'thanh-toan-va-bao-hanh.html',
         'THANH TOÁN VÀ BẢO HÀNH - Cavani.vn - Đèn Trang Trí Cao Cấp Châu Âu',
-        'THANH TOÁN VÀ BẢO HÀNH', 'CAM KẾT CAVANI',
-        '''<p class="lead" style="text-align:center;max-width:820px;margin:0 auto 34px;">Cavani cam kết mang đến sản phẩm chính hãng, dịch vụ hậu mãi tận tâm và chính sách bảo hành minh bạch cho mọi công trình.</p>
-<div class="three-col">
-<div class="info-card"><h3>Bồi thường gấp 10 lần</h3><p>Nếu phát hiện sai xuất xứ, Cavani bồi thường gấp 10 lần giá trị sản phẩm.</p></div>
-<div class="info-card"><h3>Đổi sản phẩm khác</h3><p>Hỗ trợ đổi sang sản phẩm khác phù hợp với nhu cầu và không gian thực tế.</p></div>
-<div class="info-card"><h3>Vệ sinh định kỳ</h3><p>Vệ sinh đèn 1 lần/năm, miễn phí trong năm đầu tiên.</p></div>
-<div class="info-card"><h3>Bảo hành 5 năm</h3><p>Đèn trang trí Châu Âu được bảo hành đến 5 năm tùy từng sản phẩm.</p></div>
-<div class="info-card"><h3>Bảo trì trọn đời</h3><p>Dịch vụ bảo trì trọn đời có phí, giúp đèn luôn sáng đẹp theo thời gian.</p></div>
-<div class="info-card"><h3>Đèn ngoài trời</h3><p>Bảo hành 12–24 tháng cho đèn ngoài trời và đèn chiếu sáng.</p></div>
-</div>
-<div class="two-col" style="margin-top:40px;">
-<img class="content-img" src="assets/img/kts5.jpg" alt="Bảo hành Cavani"/>
-<div><h2>Thời gian bảo hành</h2><p>Thời gian bảo hành được tính từ ngày giao nhận sản phẩm. Quý khách vui lòng giữ phiếu bảo hành và hóa đơn để được hỗ trợ nhanh chóng.</p><p>Mọi thắc mắc về thanh toán và bảo hành, vui lòng liên hệ hotline <strong>0937.6688.34</strong>.</p><a class="btn-dark" href="lien-he.html">Liên hệ ngay</a></div></div>''')
-
-    build_content('thiet-ke-den-trang-tri.html',
+        '/tmp/live-thanh-toan-va-bao-hanh.html')
+    build_live_content(
+        'thiet-ke-den-trang-tri.html',
         'THIẾT KẾ ĐÈN TRANG TRÍ - Cavani.vn - Đèn Trang Trí Cao Cấp Châu Âu',
-        'THIẾT KẾ ĐÈN TRANG TRÍ', 'CAVANI LIGHTING',
-        '''<div class="two-col"><img class="content-img" src="assets/img/kts5.jpg" alt="Thiết kế đèn trang trí"/>
-<div><h2>Đèn trang trí tô điểm không gian</h2><p class="lead">Một không gian đẹp không thể thiếu ánh sáng được thiết kế có chủ đích. Đèn trang trí không chỉ chiếu sáng mà còn tạo điểm nhấn, dẫn dắt ánh nhìn và thể hiện gu thẩm mỹ của gia chủ.</p>
-<p>Cavani tư vấn lựa chọn đèn phù hợp với chiều cao trần, diện tích, phong cách nội thất và công năng từng khu vực. Đội ngũ chuyên gia sử dụng phần mềm chuyên dụng để tính toán kích thước, kiểu dáng và bố trí đèn trong phối cảnh 3D.</p>
-<a class="btn-dark" href="lien-he.html">Đặt lịch tư vấn</a></div></div>
-<h2>Phong cách thiết kế</h2><div class="three-col">
-<div class="info-card"><h3>Cổ điển</h3><p>Đèn chùm đồng mạ vàng, pha lê cắt giác, hoa văn cầu kỳ – phù hợp biệt thự, dinh thự.</p></div>
-<div class="info-card"><h3>Tân cổ điển</h3><p>Đường nét mềm mại, tỷ lệ cân đối, sang trọng mà không nặng nề.</p></div>
-<div class="info-card"><h3>Hiện đại</h3><p>Hình khối tối giản, chất liệu kim loại và pha lê trong suốt, phù hợp penthouse, showroom.</p></div>
-</div>''')
-
-    build_content('thiet-ke-chieu-sang.html',
+        '/tmp/live-thiet-ke-den-trang-tri.html',
+        remove_selectors=('#row-537308071',))
+    build_live_content(
+        'thiet-ke-chieu-sang.html',
         'THIẾT KẾ CHIẾU SÁNG - Cavani.vn - Đèn Trang Trí Cao Cấp Châu Âu',
-        'THIẾT KẾ CHIẾU SÁNG', 'CAVANI LIGHTING',
-        '''<p class="lead" style="text-align:center;max-width:820px;margin:0 auto 34px;">“Thiết Kế Chiếu Sáng – Ánh sáng là một trong những yếu tố quyết định đến tính thẩm mỹ và ý nghĩa của không gian sống…”</p>
-<div class="two-col">
-<div><h2>Chiếu sáng công năng</h2><p>Đảm bảo độ rọi, nhiệt độ màu và chỉ số hoàn màu theo tiêu chuẩn quốc tế cho từng khu vực: phòng khách, phòng ăn, phòng ngủ, bếp, hành lang và không gian ngoài trời.</p><p>Cavani sử dụng các phần mềm tính toán chiếu sáng chuyên dụng như Coohom, Dialux và Relux để mô phỏng và tối ưu phương án.</p></div>
-<div><h2>Chiếu sáng thẩm mĩ</h2><p>Ánh sáng là ngôn ngữ định hình không gian, tôn vinh nội thất và kiến trúc. Chúng tôi kết hợp đèn chùm, đèn tường, đèn âm trần và đèn trang trí để tạo lớp lang ánh sáng giàu cảm xúc.</p><p>Mỗi phương án đều được cá nhân hóa theo phong cách sống và gu thẩm mỹ của gia chủ.</p></div></div>
-<div style="text-align:center;margin-top:34px;"><a class="btn-dark" href="lien-he.html">Nhận tư vấn chiếu sáng</a></div>''')
-
-    build_content('thiet-ke-doc-ban.html',
+        '/tmp/live-thiet-ke-chieu-sang.html')
+    build_live_content(
+        'thiet-ke-doc-ban.html',
         'THIẾT KẾ ĐỘC BẢN - Cavani.vn - Đèn Trang Trí Cao Cấp Châu Âu',
-        'THIẾT KẾ ĐỘC BẢN', 'CAVANI LIGHTING',
-        '''<div class="two-col"><img class="content-img" src="assets/img/Du-an-den-bespoke-nghe-thuat-anh-dai-dien-scaled.jpg" alt="Thiết kế độc bản"/>
-<div><h2>Dấu ấn riêng cho không gian</h2><p class="lead">Bạn muốn một mẫu đèn độc đáo, cá tính và không trùng lặp? Cavani nhận thiết kế và chế tác đèn bespoke theo yêu cầu riêng.</p>
-<p>Quy trình bắt đầu từ phác thảo theo sở thích, sau đó hoàn thiện bởi đội ngũ Cavani và các chuyên gia Châu Âu. Mỗi chi tiết kích thước, kiểu dáng, hạt pha lê và số bóng đều được tính toán để phù hợp với không gian thực tế.</p>
-<p>Hotline tư vấn: <strong>0937.6688.34</strong></p><a class="btn-dark" href="lien-he.html">Bắt đầu thiết kế</a></div></div>
-<h2>Quy trình thiết kế độc bản</h2><div class="three-col">
-<div class="info-card"><h3>01. Lắng nghe</h3><p>Khảo sát không gian, phong cách và mong muốn của gia chủ.</p></div>
-<div class="info-card"><h3>02. Phác thảo</h3><p>Phác thảo ý tưởng, lựa chọn chất liệu, kích thước và ánh sáng.</p></div>
-<div class="info-card"><h3>03. Chế tác</h3><p>Hoàn thiện bởi đội ngũ Cavani và chuyên gia Châu Âu, lắp đặt tận nơi.</p></div>
-</div>''')
+        '/tmp/live-thiet-ke-doc-ban.html')
 LEGACY_PAGES = [
     'serip-lighting.html', 'baccarat-lighting.html', 'den-tan-co-dien.html',
     'product.html', 'cart.html', 'about.html', 'contact.html',
