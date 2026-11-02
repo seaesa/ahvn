@@ -1,0 +1,17 @@
+/* AH Lighting overrides */
+.visually-hidden{position:absolute!important;height:1px;width:1px;overflow:hidden;clip:rect(1px,1px,1px,1px);white-space:nowrap}
+.footer_cavani .accordion__content li{color:#fff;font-weight:400}
+#logo img.header-logo,#logo img.header-logo-dark{height:56px;width:auto;max-height:56px}
+.ahvn-hero{background:#f4f2f2}
+.ahvn-hero img{display:block;width:100%;height:auto}
+.ahvn-heading{text-align:center;padding:40px 15px 10px}
+.ahvn-heading h2{margin:0;font-family:'Italiana',serif;font-weight:400;color:#000;font-size:1.9rem}
+.ahvn-heading p{margin:8px 0 0;letter-spacing:4px;font-size:.9rem}
+.ahvn-page{max-width:1000px;margin:0 auto;padding:40px 15px 60px}
+.ahvn-page h1{text-align:center;font-family:'Italiana',serif;font-weight:400;font-size:1.9rem;margin-bottom:30px}
+.ahvn-gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:30px}
+.ahvn-gallery img{width:100%;height:auto;display:block}
+.ahvn-article p{font-size:1.05rem;line-height:1.8}
+.ahvn-contact{text-align:center}
+.ahvn-contact p{margin:0 0 10px}
+@media(max-width:849px){#logo img.header-logo,#logo img.header-logo-dark{height:44px;max-height:44px}}
